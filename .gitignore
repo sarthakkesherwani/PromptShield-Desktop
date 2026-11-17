@@ -1,0 +1,4 @@
+node_modules/
+release/
+detector-bundle.cjs
+*.log
