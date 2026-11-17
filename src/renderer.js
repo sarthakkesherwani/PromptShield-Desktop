@@ -1,4 +1,5 @@
 const $=id=>document.getElementById(id);
+const categoryLabels={password:'Password',otp:'OTP',api_key:'API key',access_token:'Access token',private_key:'Private key',connection_string:'Connection string',secret:'Secret',credential:'Credential',email:'Email'};
 const labels={permission:'Spreadsheet access needed',paused:'Ready to watch your sheet.',waiting:'Waiting for Excel',limited:'A closer look is needed.',clear:'No sensitive values detected.',warn:'Sensitive data found.',risk:'Credentials need attention.'};
 const sourceNames={excel:'Excel',numbers:'Numbers'};
 const sourceName=()=>sourceNames[$('source').value]||'Excel';
@@ -26,7 +27,7 @@ function render(data){
   const card=document.createElement('article');card.className='glass finding';
   const top=document.createElement('div');top.className='finding-top';
   const ref=document.createElement('span');ref.className='cell-ref';ref.textContent=item.cell;
-  const title=document.createElement('h3');title.textContent=item.categories.join(' · ').replaceAll('_',' ');top.append(ref,title);
+  const title=document.createElement('h3');title.textContent=item.categories.map(category=>categoryLabels[category]||category.replaceAll('_',' ')).join(' · ');top.append(ref,title);
   const label=document.createElement('label');label.textContent='SUGGESTED MASKED VALUE';
   const preview=document.createElement('textarea');preview.readOnly=true;preview.value=item.preview;preview.setAttribute('aria-label',`Masked preview for ${item.cell}`);
   const bottom=document.createElement('div');bottom.className='finding-bottom';

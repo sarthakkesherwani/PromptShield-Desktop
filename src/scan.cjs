@@ -8,13 +8,14 @@ function scanSnapshot(snapshot){
  for(const cell of snapshot.cells){const key=cell.tableId??'excel';if(!tables.has(key))tables.set(key,[]);tables.get(key).push(cell);}
  const contexts=new Map();
  for(const [key,cells] of tables){const firstRow=Math.min(...cells.map(cell=>cell.row));contexts.set(key,{firstRow,headers:new Map(cells.filter(cell=>cell.row===firstRow).map(cell=>[cell.column,cell.text.trim().toLowerCase()]))});}
- const prefixes={name:'My name is ', 'full name':'My name is ', 'customer name':'Customer name: ',password:'password=', 'api key':'api_key=',otp:'OTP: ',aadhaar:'Aadhaar: ',aadhar:'Aadhaar: ', 'bank account':'Bank account: ', 'account number':'Account number: ',upi:'UPI ID: ',salary:'My monthly salary is ',address:'My home address is '};
+ const prefixes={name:'My name is ', 'full name':'My name is ', 'customer name':'Customer name: ',aadhaar:'Aadhaar: ',aadhar:'Aadhaar: ', 'bank account':'Bank account: ', 'account number':'Account number: ',upi:'UPI ID: ',salary:'My monthly salary is ',address:'My home address is '};
  for(const [id,cell] of snapshot.cells.entries()){
   const {firstRow,headers}=contexts.get(cell.tableId??'excel');
   const location=(cell.table?cell.table+'!':'')+address(cell.row,cell.column);
-  const prefix=cell.row>firstRow?(prefixes[headers.get(cell.column)]||''):'';
+  const columnHeader=cell.row>firstRow?headers.get(cell.column):undefined;
+  const prefix=columnHeader&&Object.hasOwn(prefixes,columnHeader)?prefixes[columnHeader]:'';
   const source=prefix+cell.text;
-  const findings=engine.scanTextSegment(source,'cell',location,{});
+  const findings=engine.scanTextSegment(source,'cell',location,{columnHeader});
   if(!findings.length)continue;
   count+=findings.length;
   critical ||= findings.some(f=>f.is_blocking||f.severity==='critical');

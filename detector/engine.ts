@@ -1,6 +1,7 @@
 import { normalizeForDetection } from './normalize';
 import { contextualMatches } from './context-rules';
 import { detectContext } from './detector';
+import { classifyCredential, credentialCategoryForHeader, isRedactedCredential } from './credential-types';
 /**
  * PromptShield AI — Core Detection Engine, Policy Store, Risk Scoring & Sanitizer
  * Pure TypeScript — zero Python dependency.
@@ -362,6 +363,20 @@ export class DetectionEngine {
     if (!text) return [];
     const findings: Finding[] = [];
     const sevRank: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+    const headerType = credentialCategoryForHeader(locationMeta.columnHeader);
+    const credentialRule = this.compiled.find(r => r.id === 'rule_api_key' && r.category === 'api_key');
+    const trimmed = text.trim();
+    if (headerType && credentialRule && trimmed && !isRedactedCredential(trimmed)) {
+      const start = text.indexOf(trimmed);
+      findings.push({
+        id: `f_${++findingSeq}_header_${start}`, rule_id: credentialRule.id, rule_name: credentialRule.name,
+        category: headerType, severity: credentialRule.severity, policy_action: credentialRule.policy_action,
+        weight: credentialRule.weight, location: locationLabel, location_type: locationType,
+        location_meta: {...locationMeta,start,end:start+trimmed.length}, matched_value: trimmed,
+        detection_source:'rule', explanation:`Column header identifies this value as ${headerType.replaceAll('_',' ')}.`,
+        is_blocking:credentialRule.policy_action==='block',
+      });
+    }
 
     for (const rule of this.compiled) {
       for (const span of contextualMatches(text, rule.category)) {
@@ -436,7 +451,11 @@ export class DetectionEngine {
       );
       if (!overlap) deduped.push(f);
     }
-    return deduped.sort((a,b) => a.location_meta.start - b.location_meta.start);
+    return deduped.sort((a,b) => a.location_meta.start - b.location_meta.start).map(f => {
+      if(f.category!=='api_key')return f;
+      const category=classifyCredential(text,f.location_meta.start,f.location_meta.end,headerType);
+      return {...f,category,explanation:`${f.explanation} Classified as ${category.replaceAll('_',' ')} from the value and its label.`};
+    });
   }
 
   evaluatePolicyAndScore(findings: Finding[], isIncomplete = false): PolicyEval {
@@ -503,6 +522,7 @@ const PLACEHOLDER_PREFIXES: Record<string, string> = {
   person_name: 'PERSON', address: 'ADDRESS', health_info: 'HEALTH', financial_info: 'FINANCIAL',
   email: 'EMAIL', phone: 'PHONE', account_id: 'ACCOUNT',
   gov_id: 'GOV_ID', credit_card: 'CARD',
+  password:'PASSWORD', otp:'OTP', access_token:'ACCESS_TOKEN', private_key:'PRIVATE_KEY', connection_string:'CONNECTION_STRING', secret:'SECRET', credential:'CREDENTIAL',
   api_key: 'API_KEY', confidential_keyword: 'CONFIDENTIAL',
 };
 
@@ -566,3 +586,4 @@ export class Sanitizer {
     };
   }
 }
+

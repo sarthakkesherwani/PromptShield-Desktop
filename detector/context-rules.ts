@@ -1,6 +1,7 @@
 /** High-precision context rules complement the learned classifier. Never label them ML. */
 export const contextRules: Record<string, RegExp[]> = {
   api_key: [
+    /\b(?:password|passwd|pwd|passphrase|api[_ -]?key|api[_ -]?token|secret[_ -]?key|client[_ -]?secret|access[_ -]?token|auth[_ -]?token)\s*(?:is|hai|h|tha)\s*(?:"(?<double>[^"\r\n]+)"|'(?<single>[^'\r\n]+)')/gi,
     /\bauthorization\s*:\s*Bearer\s+(?<value>[A-Z0-9._~+/-]{8,}=*)/gi,
     /\b(?:otp|one[- ]time password|verification code|security pin)\s*(?:is|hai|[:=])\s*["']?(?<value>\d{4,8})\b/gi,
     /["']?\b(?:password|passwd|pwd|api[_ -]?key|secret[_ -]?key|access[_ -]?token|auth[_ -]?token|client[_ -]?secret|passphrase)["']?\s*[:=]\s*(?:"(?<double>[^"\r\n]{3,})"|'(?<single>[^'\r\n]{3,})'|(?<bare>[^\s'",;}{]{3,}))/gi,
@@ -30,3 +31,4 @@ export function contextualMatches(text: string, category: string) {
   }
   return result;
 }
+
