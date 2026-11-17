@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const labels={paused:'Monitoring paused',waiting:'Waiting for Excel',limited:'Review needed',clear:'No risk detected',warn:'Sensitive data found',risk:'Credentials at risk'};
+const labels={permission:'Excel permission needed',paused:'Monitoring paused',waiting:'Waiting for Excel',limited:'Review needed',clear:'No risk detected',warn:'Sensitive data found',risk:'Credentials at risk'};
 function render(data){
  $('status').dataset.state=data.status;
  $('heading').textContent=labels[data.status]||'Review needed';
@@ -19,3 +19,4 @@ $('start').onclick=()=>window.guard.start();
 $('stop').onclick=()=>window.guard.stop();
 $('close').onclick=()=>window.guard.close();
 window.guard.onUpdate(render);
+

@@ -1,0 +1,51 @@
+name: macOS desktop preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['src/**', 'detector/**', 'scripts/build.mjs', 'tests/**', 'package*.json', '.github/workflows/macos.yml']
+permissions:
+  contents: read
+concurrency:
+  group: macos-preview
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PromptShield-macOS-preview
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PromptShield-macOS-preview
+          path: release
+      - name: Publish Mac preview downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          tag="mac-preview-${SOURCE_SHA:0:12}"
+          gh release create "$tag" release/*.dmg release/*.zip --target "$SOURCE_SHA" --prerelease --title 'PromptShield Desktop — Mac preview' --notes 'Local Excel monitoring for Apple Silicon (arm64) and Intel (x64). Preview builds are unsigned and not notarized. Automated adapter and detector tests run before packaging; live Microsoft Excel integration still requires manual validation. No screen capture or cloud inference. Review README for setup and scope.'

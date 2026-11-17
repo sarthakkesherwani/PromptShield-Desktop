@@ -3,13 +3,14 @@ const path=require('node:path');
 const fs=require('node:fs');
 const {spawn}=require('node:child_process');
 const {scanSnapshot}=require('./scan.cjs');
+const {createMacMonitor}=require('./mac-monitor.cjs');
 let win,monitor,watchdog;
 function send(data){if(win&&!win.isDestroyed())win.webContents.send('guard-update',data);}
 function stop(){if(monitor){monitor.kill();monitor=null;}clearInterval(watchdog);send({status:'paused',reason:'Monitoring paused. Sheet data cleared.'});}
 function start(){
  stop();
- if(process.platform!=='win32'){send({status:'waiting',reason:'Live monitoring requires Windows and the desktop Microsoft Excel app.'});return;}
- const child=spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',fs.readFileSync(path.join(__dirname,'excel-watch.ps1'),'utf8')],{windowsHide:true,stdio:['ignore','pipe','ignore']});
+ if(!['win32','darwin'].includes(process.platform)){send({status:'waiting',reason:'Live monitoring requires macOS or Windows and desktop Microsoft Excel.'});return;}
+ const child=process.platform==='darwin' ? createMacMonitor(path.join(app.isPackaged?process.resourcesPath:__dirname,'excel-snapshot-mac.js')) : spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',fs.readFileSync(path.join(__dirname,'excel-watch.ps1'),'utf8')],{windowsHide:true,stdio:['ignore','pipe','ignore']});
  monitor=child;let buffer='',lastUpdate=Date.now();
  child.stdout.setEncoding('utf8');
  child.stdout.on('data',chunk=>{
@@ -20,14 +21,14 @@ function start(){
   while((end=buffer.indexOf('\n'))>=0){
    const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
    if(!line)continue;
-   try{const snapshot=JSON.parse(line);lastUpdate=Date.now();send(scanSnapshot(snapshot));}
+   try{const snapshot=JSON.parse(line);lastUpdate=Date.now();send(scanSnapshot(snapshot));if(snapshot.status==='permission'){stop();send(snapshot);return;}}
    catch{send({status:'waiting',reason:'Could not inspect this sheet. Monitoring will retry.'});}
   }
  });
- child.on('error',()=>{if(monitor===child){stop();send({status:'waiting',reason:'Windows PowerShell could not start.'});}});
+ child.on('error',()=>{if(monitor===child){stop();send({status:'waiting',reason:'The Excel adapter could not start.'});}});
  child.on('exit',()=>{if(monitor===child){monitor=null;clearInterval(watchdog);send({status:'waiting',reason:'Excel connection stopped. Press Start to reconnect.'});}});
- watchdog=setInterval(()=>{if(Date.now()-lastUpdate>8000){stop();send({status:'waiting',reason:'Excel is busy or unavailable. Press Start to reconnect.'});}},2000);
- send({status:'waiting',reason:'Connecting to the active Excel sheet…'});
+ watchdog=setInterval(()=>{if(Date.now()-lastUpdate>(process.platform==='darwin'?130000:8000)){stop();send({status:'waiting',reason:'Excel is busy or unavailable. Press Start to reconnect.'});}},2000);
+ send({status:'waiting',reason:'Connecting to Excel… On Mac, allow Excel access if macOS asks.'});
 }
 app.whenReady().then(()=>{
  // The companion serves local files and opens no network listener.
@@ -43,3 +44,4 @@ app.whenReady().then(()=>{
 });
 app.on('window-all-closed',()=>app.quit());
 app.on('before-quit',stop);
+
