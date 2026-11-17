@@ -2,7 +2,7 @@
   "name": "promptshield-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Local Excel privacy companion",
+  "description": "Local Excel and Apple Numbers privacy companion",
   "main": "src/main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -38,14 +38,28 @@
       ],
       "category": "public.app-category.productivity",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "PromptShield reads active Excel cell values locally after you start monitoring, to suggest masking sensitive information."
+        "NSAppleEventsUsageDescription": "After you start monitoring, PromptShield reads active-sheet cell values from the spreadsheet app you select (Microsoft Excel or Apple Numbers) locally, to suggest masking sensitive information."
       },
-      "artifactName": "PromptShield-Desktop-${version}-mac-${arch}.${ext}"
+      "artifactName": "PromptShield-Desktop-${version}-mac-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "native/cell-anchor",
+          "to": "cell-anchor"
+        }
+      ]
     },
     "extraResources": [
       {
         "from": "src/excel-snapshot-mac.js",
         "to": "excel-snapshot-mac.js"
+      },
+      {
+        "from": "src/numbers-snapshot-mac.js",
+        "to": "numbers-snapshot-mac.js"
+      },
+      {
+        "from": "src/focus-numbers-mac.js",
+        "to": "focus-numbers-mac.js"
       }
     ]
   }

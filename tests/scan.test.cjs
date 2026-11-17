@@ -23,3 +23,13 @@ test('UI results are capped while overall count includes all cells',()=>{
  assert.equal(result.items.length,50);assert.equal(result.count,60);
 });
 test('empty sheets do not show a green assurance',()=>assert.equal(scan([]).status,'waiting'));
+test('Numbers headers and locations stay within each table',()=>{
+ const result=scanSnapshot({status:'snapshot',source:'numbers',sheet:'Demo',cells:[
+  {table:'Accounts',tableId:0,row:1,column:2,text:'Password'},
+  {table:'Accounts',tableId:0,row:2,column:2,text:'Quartz#999'},
+  {table:'Inventory',tableId:1,row:1,column:2,text:'Description'},
+  {table:'Inventory',tableId:1,row:2,column:2,text:'Blue ink'},
+ ]});
+ assert.equal(result.status,'risk');assert.equal(result.source,'numbers');assert.equal(result.items.length,1);assert.equal(result.items[0].cell,'Accounts!B2');assert.ok(!JSON.stringify(result).includes('Quartz#999'));
+});
+

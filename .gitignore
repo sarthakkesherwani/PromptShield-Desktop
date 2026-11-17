@@ -6,3 +6,5 @@ detector-bundle.cjs
 
 .npm-cache/
 .test-transpiled/
+
+native/
