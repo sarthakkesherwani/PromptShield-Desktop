@@ -2,16 +2,19 @@ const {app,BrowserWindow,ipcMain,session,screen,nativeTheme,shell}=require('elec
 const path=require('node:path'),fs=require('node:fs');
 const {spawn}=require('node:child_process');
 const {scanSnapshot}=require('./scan.cjs');
+const {createBulkPlan,summarizePlan,runBulk}=require('./bulk-review.cjs');
 const {createMacMonitor}=require('./mac-monitor.cjs');
 const {resolveSource}=require('./monitor-source.cjs');
 const {createTargets,focusTarget,positionHint,applyTarget,digest}=require('./cell-review.cjs');
 let win,monitor,watchdog,hint,cellOutline,hintTimer,hintTarget,hintApplying=false,latestResult,targets=new Map(),revision=0,reviewEpoch=0,manualReviewing=false,dismissedHintKey=null;
+let latestSnapshot,bulkPlan,undoBatch,bulkRunning=false,bulkCancelled=false,bulkEpoch=0;
+function bulkUpdate(data){if(win&&!win.isDestroyed())win.webContents.send('bulk-update',data);}
 const resource=name=>path.join(app.isPackaged?process.resourcesPath:__dirname,name);
 const mainSender=event=>win&&!win.isDestroyed()&&event.sender===win.webContents;
 function send(data){if(win&&!win.isDestroyed())win.webContents.send('guard-update',data);}
 function hideHint(){reviewEpoch++;clearInterval(hintTimer);hintTarget=null;if(hint&&!hint.isDestroyed())hint.close();hint=null;if(cellOutline&&!cellOutline.isDestroyed())cellOutline.close();cellOutline=null;}
 function disconnect(){if(monitor){monitor.kill();monitor=null;}clearInterval(watchdog);}
-function stop(){disconnect();hideHint();latestResult=null;targets.clear();send({status:'paused',reason:'Monitoring paused. Sheet data cleared.'});}
+function stop(){bulkCancelled=true;bulkEpoch++;bulkPlan=null;undoBatch=null;latestSnapshot=null;bulkUpdate({phase:'idle',canUndo:false});disconnect();hideHint();latestResult=null;targets.clear();send({status:'paused',reason:'Monitoring paused. Sheet data cleared.'});}
 function start(source='excel'){
  stop();let config;
  try{config=resolveSource(process.platform,source);}catch(error){send({status:'waiting',reason:error.message});return;}
@@ -23,16 +26,17 @@ function start(source='excel'){
   let end;while((end=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);if(!line)continue;
    try{
     const snapshot=JSON.parse(line);
+    if(bulkRunning){lastUpdate=Date.now();continue;}
     if(latestResult&&snapshot.status==='waiting'&&snapshot.reason?.startsWith('Reading the active')){send({...latestResult,refreshing:true,monitoring:true});continue;}
     lastUpdate=Date.now();const result=scanSnapshot(snapshot);result.revision=++revision;result.monitoring=true;
-    latestResult=snapshot.status==='snapshot'?result:null;targets=createTargets(snapshot,result);send(result);if(snapshot.status==='snapshot')automaticHint(snapshot);
+    latestSnapshot=snapshot.status==='snapshot'?snapshot:null;latestResult=snapshot.status==='snapshot'?result:null;targets=createTargets(snapshot,result);send(result);if(snapshot.status==='snapshot')automaticHint(snapshot);
     if(snapshot.status==='permission'){disconnect();send({...result,monitoring:false});return;}
-   }catch{latestResult=null;targets.clear();send({status:'waiting',reason:'Could not inspect this sheet. Monitoring will retry.'});}
+   }catch{latestSnapshot=null;latestResult=null;targets.clear();send({status:'waiting',reason:'Could not inspect this sheet. Monitoring will retry.'});}
   }
  });
  child.on('error',()=>{if(monitor===child){stop();send({status:'waiting',reason:'The spreadsheet adapter could not start.'});}});
  child.on('exit',()=>{if(monitor===child){stop();send({status:'waiting',reason:'Spreadsheet connection stopped. Press Start to reconnect.'});}});
- watchdog=setInterval(()=>{if(Date.now()-lastUpdate>(process.platform==='darwin'&&!latestResult?130000:8000)){stop();send({status:'waiting',reason:'The spreadsheet app is busy or unavailable. Press Start to reconnect.'});}},2000);
+ watchdog=setInterval(()=>{if(bulkRunning)return;if(Date.now()-lastUpdate>(process.platform==='darwin'&&!latestResult?130000:8000)){stop();send({status:'waiting',reason:'The spreadsheet app is busy or unavailable. Press Start to reconnect.'});}},2000);
  send({status:'waiting',monitoring:true,reason:`Connecting to ${config.label}… Allow access if macOS asks.`});
 }
 let anchorModule;
@@ -74,7 +78,7 @@ async function showCellHint(target,epoch,original){
  return {status:'focused',reason:reason+' Monitoring continues.'};
 }
 async function reviewCell(event,id,scanRevision){
- if(!mainSender(event)||process.platform!=='darwin'||!latestResult||scanRevision!==latestResult.revision||!Number.isInteger(id)||!targets.has(id))return {status:'stale',reason:'The sheet changed. Scan again before reviewing this cell.'};
+ if(bulkRunning||!mainSender(event)||process.platform!=='darwin'||!latestResult||scanRevision!==latestResult.revision||!Number.isInteger(id)||!targets.has(id))return {status:'stale',reason:'The sheet changed. Scan again before reviewing this cell.'};
  const target=targets.get(id);dismissedHintKey=null;hideHint();const epoch=reviewEpoch;manualReviewing=true;
  try{
   const focused=await focusTarget(target,resource('focus-numbers-mac.js'));
@@ -87,7 +91,7 @@ async function reviewCell(event,id,scanRevision){
 }
 let inlineEnabled=true,autoBusy=false,autoHintKey=null,accessNotified=false;
 async function automaticHint(snapshot){
- if(!inlineEnabled||manualReviewing||hintApplying||process.platform!=='darwin'||snapshot.source!=='numbers')return;
+ if(bulkRunning||!inlineEnabled||manualReviewing||hintApplying||process.platform!=='darwin'||snapshot.source!=='numbers')return;
  const selected=snapshot.selected;
  if(hintTarget?.applied){
   if(selected&&snapshot.documentId===hintTarget.documentId&&snapshot.sheet===hintTarget.sheet&&selected.tableId===hintTarget.tableId&&selected.address===hintTarget.address)return;
@@ -120,7 +124,7 @@ app.whenReady().then(()=>{
  ipcMain.handle('inline-hints',(event,enabled)=>{if(mainSender(event)&&typeof enabled==='boolean'){inlineEnabled=enabled;accessNotified=false;if(!enabled)hideHint();}});
  ipcMain.handle('inline-settings',event=>{if(mainSender(event))return shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility');});
  async function applyCurrentHint(){
-  if(!hint||hint.isDestroyed()||!hintTarget||hintApplying)return {status:'stale',reason:'Select the sensitive cell again.'};
+  if(bulkRunning||!hint||hint.isDestroyed()||!hintTarget||hintApplying)return {status:'stale',reason:'Select the sensitive cell again.'};
   hintApplying=true;const target=hintTarget,popup=hint,epoch=reviewEpoch;
 
   try{
@@ -139,6 +143,33 @@ app.whenReady().then(()=>{
   const reviewed=await reviewCell(event,id,scanRevision);
   if(reviewed.status!=='focused')return reviewed;
   return applyCurrentHint();
+ });
+ ipcMain.handle('prepare-bulk',event=>{
+  if(!mainSender(event)||bulkRunning||hintApplying||process.platform!=='darwin'||!latestSnapshot)return {status:'unavailable',reason:'Run a Numbers scan first.'};
+  try{bulkPlan=createBulkPlan(latestSnapshot);return {status:'ready',...summarizePlan(bulkPlan)};}catch{return {status:'unavailable',reason:'Keep the Numbers sheet open and run a fresh scan.'};}
+ });
+ async function performBulk(plan,isUndo=false){
+  if(bulkRunning||hintApplying)return {status:'busy',reason:'A masking action is already running.'};
+  if(!latestSnapshot||latestSnapshot.documentId!==plan.documentId||latestSnapshot.sheet!==plan.sheet)return {status:'stale',reason:'Return to the reviewed Numbers sheet, then try again.'};
+  const epoch=bulkEpoch;bulkRunning=true;bulkCancelled=false;hideHint();
+  bulkUpdate({phase:'running',action:isUndo?'undo':'mask',total:plan.entries.length,processed:0,applied:0,skipped:0,canUndo:false});
+  try{
+   const result=await runBulk(plan,resource('bulk-numbers-mac.js'),{cancelled:()=>bulkCancelled||epoch!==bulkEpoch,onProgress:progress=>{if(epoch===bulkEpoch)bulkUpdate({phase:'running',action:isUndo?'undo':'mask',...progress});}});
+   if(epoch!==bulkEpoch)return {status:'cancelled',reason:'Remaining changes cancelled.'};
+   undoBatch=!isUndo&&result.undo.length?{documentId:plan.documentId,sheet:plan.sheet,entries:result.undo}:null;bulkPlan=null;
+   const verb=isUndo?'restored':'masked';const reason=`${result.applied} cells ${verb}. ${result.skipped} skipped. ${result.remaining} remaining.`+(result.unconfirmed?` ${result.unconfirmed} could not be confirmed. Scan again.`:' Monitoring continues.');
+   const summary={status:result.status,reason,applied:result.applied,skipped:result.skipped,remaining:result.remaining,unconfirmed:result.unconfirmed};
+   bulkUpdate({phase:'done',...summary,canUndo:!!undoBatch});return summary;
+  }finally{bulkRunning=false;}
+ }
+ ipcMain.handle('apply-bulk',(event,id)=>{
+  if(!mainSender(event)||!bulkPlan||id!==bulkPlan.id)return {status:'stale',reason:'Review the sheet again before applying.'};
+  return performBulk(bulkPlan);
+ });
+ ipcMain.handle('cancel-bulk',event=>{if(mainSender(event)){bulkCancelled=true;bulkPlan=null;}});
+ ipcMain.handle('undo-bulk',event=>{
+  if(!mainSender(event)||!undoBatch)return {status:'stale',reason:'No batch is available to undo.'};
+  return performBulk(undoBatch,true);
  });
  ipcMain.handle('dismiss-hint',event=>{if(hint&&!hint.isDestroyed()&&event.sender===hint.webContents){if(hintTarget)dismissedHintKey=JSON.stringify([hintTarget.documentId,hintTarget.sheet,hintTarget.tableId,hintTarget.address,hintTarget.hash]);hideHint();}});
  win.once('ready-to-show',()=>win.show());win.loadFile(path.join(__dirname,'index.html'));

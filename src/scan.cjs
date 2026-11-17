@@ -1,6 +1,7 @@
 const {getEngine,Sanitizer}=require('../detector-bundle.cjs');
 function address(row,column){let label='';while(column>0){column--;label=String.fromCharCode(65+column%26)+label;column=Math.floor(column/26);}return label+row;}
-function scanSnapshot(snapshot){
+function scanSnapshot(snapshot,{maxItems=50}={}){
+ const itemLimit=Math.max(0,Math.min(20000,Number.isInteger(maxItems)?maxItems:50));
  if(snapshot.status!=='snapshot')return {status:snapshot.status,reason:snapshot.reason};
  if(!snapshot.cells.length)return {status:'waiting',reason:'The active sheet has no populated values to inspect.'};
  const engine=getEngine(); let count=0,critical=false,selectedItem;const items=[];
@@ -30,12 +31,12 @@ function scanSnapshot(snapshot){
    tokens.set(finding,replacements.get(key));
   }
   const selected=snapshot.selected&&snapshot.selected.tableId===cell.tableId&&snapshot.selected.address===address(cell.row,cell.column);
-  if(items.length<50||selected){
+  if(items.length<itemLimit||selected){
    let masked=source;
    for(const finding of [...findings].sort((a,b)=>b.location_meta.start-a.location_meta.start))masked=masked.slice(0,finding.location_meta.start)+tokens.get(finding)+masked.slice(finding.location_meta.end);
    const fullPreview=masked.slice(prefix.length);
    const item={id,cell:location,categories:[...new Set(findings.map(f=>f.category))],preview:fullPreview.slice(0,2000),canApply:fullPreview.length<=2000&&!/^[=+@]/.test(fullPreview)};
-   if(items.length<50)items.push(item);
+   if(items.length<itemLimit)items.push(item);
    if(selected)selectedItem=item;
   }
  }

@@ -1,6 +1,11 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('guard',{
  platform:process.platform,
+ prepareBulk:()=>ipcRenderer.invoke('prepare-bulk'),
+ applyBulk:id=>ipcRenderer.invoke('apply-bulk',id),
+ cancelBulk:()=>ipcRenderer.invoke('cancel-bulk'),
+ undoBulk:()=>ipcRenderer.invoke('undo-bulk'),
+ onBulkUpdate:callback=>ipcRenderer.on('bulk-update',(_event,data)=>callback(data)),
  setInlineHints:enabled=>ipcRenderer.invoke('inline-hints',enabled),
  onInlineStatus:callback=>ipcRenderer.on('inline-status',(_event,data)=>callback(data)),
  reviewCell:(id,revision)=>ipcRenderer.invoke('review-cell',id,revision),

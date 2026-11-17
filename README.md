@@ -56,7 +56,7 @@ On macOS, source builds compile a small universal Swift helper using Xcode Comma
 
 ## Presentation checks for credential types
 
-The original broad credential rule grouped passwords and API keys. Credential findings now retain the same critical protection while using distinct categories and placeholders: `PASSWORD`, `OTP`, `API_KEY`, `ACCESS_TOKEN`, `PRIVATE_KEY`, `CONNECTION_STRING`, `SECRET`, and `CREDENTIAL`. Password, Pwd, Login Password, Passphrase and normalized header aliases are understood as column context. A password cell that happens to look like an email remains a password. Quoted passphrases are masked in full. Email fields retain `EMAIL` placeholders. The model weights were not retrained for this change; the upgrade is the structured-context and classification layer. The 92-test regression suite covers these behaviors alongside scanner and native-adapter tests.
+The original broad credential rule grouped passwords and API keys. Credential findings now retain the same critical protection while using distinct categories and placeholders: `PASSWORD`, `OTP`, `API_KEY`, `ACCESS_TOKEN`, `PRIVATE_KEY`, `CONNECTION_STRING`, `SECRET`, and `CREDENTIAL`. Password, Pwd, Login Password, Passphrase and normalized header aliases are understood as column context. A password cell that happens to look like an email remains a password. Quoted passphrases are masked in full. Email fields retain `EMAIL` placeholders. The model weights were not retrained for this change; the upgrade is the structured-context and classification layer. The 101-test regression suite covers these behaviors alongside scanner and native-adapter tests.
 
 ## Red on-screen cell review
 
@@ -69,3 +69,14 @@ The cell suggestion uses a compact Apple-style frosted popover with system typog
 **Apply mask** writes only the verified selected Numbers cell after your click. The expected value travels to the native adapter over standard input, never in process arguments or a temporary file. The popup remains with an Applied state after success; monitoring refreshes the other findings automatically. Formula cells and incomplete/truncated previews require manual review.
 
 The sun/moon glass switch animates between dark and light appearances, labels the next action clearly, and updates an open suggestion immediately. Unchanged scan findings retain their buttons and keyboard focus across refreshes.
+
+
+## Mask a Numbers sheet in one batch
+
+Single-cell **Show cell**, **Apply mask** and **Copy value** remain available. For a large active Numbers sheet, choose **Mask all on this sheet**, inspect the count by category and sample replacements, then choose **Apply N masks**. The plan includes all eligible affected cells, including those beyond the 50 visible finding cards. It masks only this document and active sheet, with the same consistent placeholders as individual previews.
+
+Each group rechecks document/sheet/table identity, column header context, the unchanged displayed value and formula status. Edited values, changed headers and formula cells are skipped. Incomplete previews are excluded. Progress shows applied/skipped totals; **Cancel remaining** stops after the current group. A lost adapter response is reported as unconfirmed instead of silently retrying writes.
+
+**Undo last batch** restores confirmed changes only where the masked value is still unchanged. The undo data remains in app memory for this session, is replaced by the next batch, and is cleared on pause, source change or app exit. Monitoring continues during batch masking and undo, and refreshes findings afterward. Batch writing is currently available for Apple Numbers; Excel retains its existing monitoring and copy workflow.
+
+Validation: 101 automated tests pass, including coverage beyond 50 cards, cancellation, stale sheets, formulas, header edits, uncertain responses and guarded undo. A native Mac test on the 3,000-record synthetic demo masked all 64 affected cells on its mixed sheet, reducing 82 findings to zero while monitoring continued. Undo restored all 64 cells and the scanner again reported the original 82 findings.

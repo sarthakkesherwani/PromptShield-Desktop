@@ -38,7 +38,7 @@
       ],
       "category": "public.app-category.productivity",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "After you start monitoring, PromptShield reads active-sheet cell values from the spreadsheet app you select (Microsoft Excel or Apple Numbers) locally, to suggest masking sensitive information. Apply mask changes only the reviewed selected Numbers cell after your explicit click."
+        "NSAppleEventsUsageDescription": "After you start monitoring, PromptShield reads active-sheet cell values from the spreadsheet app you select (Microsoft Excel or Apple Numbers) locally, to suggest masking sensitive information. Apply mask and Mask all change only the reviewed Numbers cells after your explicit click."
       },
       "artifactName": "PromptShield-Desktop-${version}-mac-${arch}.${ext}",
       "extraResources": [
@@ -49,6 +49,7 @@
       ]
     },
     "extraResources": [
+      {"from":"src/bulk-numbers-mac.js","to":"bulk-numbers-mac.js"},
       {
         "from": "src/excel-snapshot-mac.js",
         "to": "excel-snapshot-mac.js"

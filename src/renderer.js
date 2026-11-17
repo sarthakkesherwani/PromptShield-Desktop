@@ -11,10 +11,10 @@ function setTheme(theme,animate=false){if(animate){document.body.classList.add('
 const systemTheme=()=>window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
 try{const saved=localStorage.getItem('guard-theme');setTheme(saved==='dark'||saved==='light'?saved:systemTheme());}catch{setTheme(systemTheme());}
 $('theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark',true);
-let renderedFindingsKey,activeRevision;
+let renderedFindingsKey,activeRevision,bulkPlanId,bulkBusy=false,bulkEligible=false;
 function render(data){
  if(data.refreshing){$('checked-time').textContent='Refreshing…';return;}
- activeRevision=data.revision;
+ activeRevision=data.revision;bulkEligible=data.source==='numbers'&&data.count>0;$('bulk-actions').hidden=data.source!=='numbers';$('bulk-review').disabled=bulkBusy||!bulkEligible;
  if(typeof data.monitoring==='boolean')setRunning(data.monitoring);
  const status=Object.hasOwn(labels,data.status)?data.status:'limited';
  if(['paused','permission'].includes(status))setRunning(false);
@@ -40,13 +40,36 @@ function render(data){
   const copy=document.createElement('button');copy.className='copy-button';copy.textContent='Copy value';copy.setAttribute('aria-label',`Copy masked value for ${item.cell}`);
   copy.onclick=async()=>{try{await navigator.clipboard.writeText(preview.value);copy.textContent='Copied';}catch{preview.focus();preview.select();copy.textContent='Select & copy';}setTimeout(()=>{copy.textContent='Copy value';},1800);};
   bottom.append(hint);
-  if(data.source==='numbers'&&window.guard?.reviewCell){const locate=document.createElement('button');locate.className='locate-button';locate.textContent='Show cell';locate.setAttribute('aria-label',`Show ${item.cell} in Numbers`);locate.onclick=async()=>{locate.disabled=true;try{const result=await window.guard.reviewCell(item.id,activeRevision);$('notice').hidden=false;$('notice-text').textContent=result.reason;$('inline-settings').hidden=result.status!=='accessibility';}catch{$('notice').hidden=false;$('notice-text').textContent='Could not locate the cell. Start a fresh scan.';}finally{locate.disabled=false;}};bottom.append(locate);}
-  if(data.source==='numbers'&&item.canApply&&window.guard?.applyCell){const apply=document.createElement('button');apply.className='locate-button apply-button';apply.textContent='Apply mask';apply.setAttribute('aria-label',`Apply mask to ${item.cell}`);hint.hidden=true;apply.onclick=async()=>{apply.disabled=true;apply.textContent='Applying…';try{const result=await window.guard.applyCell(item.id,activeRevision);$('notice').hidden=false;$('notice-text').textContent=result.reason;apply.textContent=result.status==='applied'?'Applied ✓':'Try again';}catch{apply.textContent='Try again';}finally{apply.disabled=false;}};bottom.append(apply);}
+  if(data.source==='numbers'&&window.guard?.reviewCell){const locate=document.createElement('button');locate.className='locate-button';locate.textContent='Show cell';locate.setAttribute('aria-label',`Show ${item.cell} in Numbers`);locate.onclick=async()=>{if(bulkBusy)return;locate.disabled=true;try{const result=await window.guard.reviewCell(item.id,activeRevision);$('notice').hidden=false;$('notice-text').textContent=result.reason;$('inline-settings').hidden=result.status!=='accessibility';}catch{$('notice').hidden=false;$('notice-text').textContent='Could not locate the cell. Start a fresh scan.';}finally{locate.disabled=false;}};bottom.append(locate);}
+  if(data.source==='numbers'&&item.canApply&&window.guard?.applyCell){const apply=document.createElement('button');apply.className='locate-button apply-button';apply.textContent='Apply mask';apply.setAttribute('aria-label',`Apply mask to ${item.cell}`);hint.hidden=true;apply.onclick=async()=>{if(bulkBusy)return;apply.disabled=true;apply.textContent='Applying…';try{const result=await window.guard.applyCell(item.id,activeRevision);$('notice').hidden=false;$('notice-text').textContent=result.reason;apply.textContent=result.status==='applied'?'Applied ✓':'Try again';}catch{apply.textContent='Try again';}finally{apply.disabled=false;}};bottom.append(apply);}
   bottom.append(copy);card.append(top,label,preview,bottom);$('findings').append(card);
  }
- if((data.items||[]).length===50){const note=document.createElement('p');note.className='overflow-note';note.textContent='Showing the first 50 affected cells. Review the remaining cells separately.';$('findings').append(note);}
+ if((data.items||[]).length===50){const note=document.createElement('p');note.className='overflow-note';note.textContent='Showing the first 50 affected cells. Use Mask all to review and process every eligible cell on this sheet.';$('findings').append(note);}
 }
+function showBulkState(data){
+ if(data.phase==='idle'){bulkBusy=false;bulkPlanId=null;$('source').disabled=false;$('start').disabled=false;$('bulk-panel').hidden=true;$('bulk-undo').hidden=true;return;}
+ $('bulk-actions').hidden=false;$('bulk-panel').hidden=false;
+ bulkBusy=data.phase==='running';$('bulk-review').disabled=bulkBusy||!bulkEligible;$('bulk-undo').disabled=bulkBusy;
+ $('source').disabled=bulkBusy;$('start').disabled=bulkBusy;
+ for(const button of document.querySelectorAll('.finding .locate-button'))button.disabled=bulkBusy;
+ if(bulkBusy){$('bulk-title').textContent=data.action==='undo'?'Restoring cells…':'Masking this sheet…';$('bulk-apply').hidden=true;$('bulk-cancel').hidden=false;$('bulk-cancel').textContent='Cancel remaining';$('bulk-progress').textContent=`${data.processed} of ${data.total} cells checked · ${data.applied} applied · ${data.skipped} skipped`;}
+ else{$('bulk-title').textContent='Batch complete';$('bulk-summary').textContent=data.reason||'';$('bulk-samples').replaceChildren();$('bulk-progress').textContent='';$('bulk-apply').hidden=true;$('bulk-cancel').hidden=true;$('bulk-undo').hidden=!data.canUndo;}
+}
+$('bulk-review').onclick=async()=>{
+ $('bulk-review').disabled=true;
+ try{const plan=await window.guard.prepareBulk();if(plan.status!=='ready'){showBulkState({phase:'done',reason:plan.reason});return;}
+  bulkPlanId=plan.id;$('bulk-panel').hidden=false;$('bulk-title').textContent=`Mask ${plan.cells} cells on ${plan.sheet}?`;
+  const categories=Object.entries(plan.categories).map(([key,count])=>`${categoryLabels[key]||key}: ${count}`).join(' · ');
+  $('bulk-summary').textContent=`${categories}. ${plan.ineligible} incomplete suggestions excluded. Values on this sheet will be replaced. You can undo the last batch in this session.`;
+  $('bulk-samples').replaceChildren();for(const sample of plan.samples){const row=document.createElement('p');row.textContent=sample.cell+' → '+sample.replacement;$('bulk-samples').append(row);}
+  $('bulk-progress').textContent='Changed cells and formulas will be skipped.';$('bulk-apply').hidden=plan.cells===0;$('bulk-apply').textContent=`Apply ${plan.cells} masks`;$('bulk-cancel').hidden=false;$('bulk-cancel').textContent='Keep reviewing';
+ }catch{showBulkState({phase:'done',reason:'Could not prepare the sheet. Run a fresh scan.'});}finally{$('bulk-review').disabled=bulkBusy||!bulkEligible;}
+};
+$('bulk-apply').onclick=async()=>{if(!bulkPlanId||bulkBusy)return;$('bulk-apply').disabled=true;try{const result=await window.guard.applyBulk(bulkPlanId);if(!['done','partial'].includes(result.status))showBulkState({phase:'done',reason:result.reason});}catch{showBulkState({phase:'done',reason:'Could not confirm the batch. Scan the sheet again.'});}finally{$('bulk-apply').disabled=false;}};
+$('bulk-cancel').onclick=async()=>{await window.guard.cancelBulk();if(!bulkBusy){$('bulk-panel').hidden=true;bulkPlanId=null;}else{$('bulk-cancel').disabled=true;$('bulk-cancel').textContent='Finishing current group…';}};
+$('bulk-undo').onclick=async()=>{if(bulkBusy)return;try{const result=await window.guard.undoBulk();if(!['done','partial'].includes(result.status))showBulkState({phase:'done',reason:result.reason});}catch{showBulkState({phase:'done',reason:'Could not confirm undo. Check the sheet before retrying.'});}};
 if(window.guard){
+ window.guard.onBulkUpdate?.(data=>{$('bulk-cancel').disabled=false;showBulkState(data);});
  $('inline-controls').hidden=$('source').value!=='numbers';
  if(window.guard.onInlineStatus)window.guard.onInlineStatus(result=>{$('notice').hidden=false;$('notice-text').textContent=result.reason;$('inline-settings').hidden=result.status!=='accessibility';});
  $('inline-enabled').onchange=()=>window.guard.setInlineHints?.($('inline-enabled').checked);
