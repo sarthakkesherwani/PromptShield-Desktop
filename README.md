@@ -1,6 +1,6 @@
 # PromptShield Desktop
 
-A local macOS and Windows Excel privacy companion. The floating window checks the active worksheet every two seconds after you press **Start monitoring**. Green means no matches in inspected cell values, amber means sensitive data was detected, red means a blocking/critical credential was detected. Gray means paused, disconnected or unavailable. Uninspectable ranges never receive green status.
+A local macOS and Windows Excel privacy companion with a frosted-glass interface, the PromptShield website’s crimson branding, light/dark appearance, and reviewable masked-value cards. The floating window checks the active worksheet every two seconds after you press **Start monitoring**. Green means no matches in inspected cell values, amber means sensitive data was detected, red means a blocking/critical credential was detected. Gray means paused, disconnected or unavailable. Uninspectable ranges never receive green status.
 
 ## Run on a Mac
 
@@ -10,7 +10,7 @@ macOS may ask to allow PromptShield Desktop to control Microsoft Excel. This per
 
 These preview downloads are unsigned and not notarized. Standard macOS security checks may block them; this project does not change those protections. Developer ID signing and notarization remain release prerequisites for a polished installation experience.
 
-For developers: install Node.js 22+, run `npm ci`, then `npm start`. `npm run dist:mac` builds Apple Silicon and Intel DMG/ZIP packages on macOS. Source runs may show the permission under the terminal or Electron rather than the packaged app name. Apple Numbers, Google Sheets and Excel web are not supported.
+For developers: install Node.js 22+, then double-click `Start-PromptShield-Mac.command`, or run `bash Start-PromptShield-Mac.command` inside the extracted project folder. The launcher handles folder names with spaces and keeps the npm cache inside the project. Alternatively, run `npm ci --cache .npm-cache`, then `npm start`. `npm run dist:mac` builds Apple Silicon and Intel DMG/ZIP packages on macOS. Source runs may show the permission under the terminal or Electron rather than the packaged app name. Apple Numbers, Google Sheets and Excel web are not supported.
 
 ## Run on your Windows laptop
 
