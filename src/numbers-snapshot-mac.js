@@ -27,7 +27,7 @@ function run() {
     var cells = [], chars = 0, selections = [];
     for (var i = 0; i < tableCount; i++) {
       var table = tables[i], size = dimensions[i], tableName = String(table.name());
-      try { var selected = String(table.selectionRange.name()); if (/^[A-Z]+[1-9][0-9]*$/.test(selected)) selections.push({tableId:i,address:selected}); } catch (_) {}
+      try { var selected = String(table.selectionRange.name()).replace(/\$/g,''); var single=/^([A-Z]+[1-9][0-9]*)(?::\1)?$/.exec(selected); if (single) selections.push({tableId:i,address:single[1]}); } catch (_) {}
       // Bulk reads use Numbers' own cell coordinates, not assumed enumeration order.
       var names = table.cells.name();
       var values = table.cells.formattedValue();

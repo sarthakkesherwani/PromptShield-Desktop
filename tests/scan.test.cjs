@@ -32,4 +32,23 @@ test('Numbers headers and locations stay within each table',()=>{
  ]});
  assert.equal(result.status,'risk');assert.equal(result.source,'numbers');assert.equal(result.items.length,1);assert.equal(result.items[0].cell,'Accounts!B2');assert.ok(!JSON.stringify(result).includes('Quartz#999'));
 });
+test('different emails get distinct placeholders while repeated emails stay consistent across cells',()=>{
+ const r=scan([{row:1,column:1,text:'Contact'},{row:2,column:1,text:'a@example.com'},{row:3,column:1,text:'b@example.com'},{row:4,column:1,text:'a@example.com'}]);
+ assert.deepEqual(r.items.map(item=>item.preview),['[EMAIL_1]','[EMAIL_2]','[EMAIL_1]']);
+});
+test('selected Numbers cell beyond the first 50 findings remains available for inline review',()=>{
+ const cells=Array.from({length:80},(_,i)=>({table:'Contacts',tableId:0,row:i+1,column:1,text:`demo${i}@example.com`}));
+ const r=scanSnapshot({status:'snapshot',source:'numbers',documentId:'demo-id',sheet:'Demo',selected:{tableId:0,address:'A75'},cells});
+ assert.equal(r.items.length,50);assert.equal(r.count,80);assert.equal(r.selectedItem.cell,'Contacts!A75');assert.equal(r.selectedItem.preview,'[EMAIL_75]');
+ const {createTargets}=require('../src/cell-review.cjs');const targets=createTargets({source:'numbers',documentId:'demo-id',sheet:'Demo',cells},r);assert.equal(targets.size,51);assert.equal(targets.get(74).address,'A75');
+});
+test('the same value in a password and an email column keeps its field-specific replacement',()=>{
+ const r=scan([{row:1,column:1,text:'Password'},{row:1,column:2,text:'Email'},{row:2,column:1,text:'demo@example.com'},{row:2,column:2,text:'demo@example.com'}]);
+ assert.deepEqual(r.items.map(item=>item.preview),['[PASSWORD_1]','[EMAIL_1]']);
+});
 
+
+test('truncated suggestions cannot be applied to avoid dropping the rest of a cell',()=>{
+ const r=scanSnapshot({status:'snapshot',cells:[{row:1,column:1,text:'email: demo@example.com '+ 'ordinary text '.repeat(300)}]});
+ assert.equal(r.items[0].preview.length,2000);assert.equal(r.items[0].canApply,false);
+});

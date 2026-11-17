@@ -1,0 +1,1 @@
+html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;pointer-events:none}.red-cell-frame{position:absolute;inset:2px;border:2px solid #ff355d;border-radius:4px;background:rgba(255,35,80,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45),0 0 4px rgba(245,15,65,.45)}@media(prefers-reduced-transparency:reduce){.red-cell-frame{background:transparent}}

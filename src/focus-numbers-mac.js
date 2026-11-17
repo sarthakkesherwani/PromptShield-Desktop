@@ -1,4 +1,4 @@
-/* Navigation only: selects a reviewed cell, never changes its value. */
+/* Navigation is read-only. Apply writes one explicitly reviewed, unchanged cell. */
 function run(args) {
  try {
   var target=JSON.parse(args[0]);
@@ -11,7 +11,17 @@ function run(args) {
   var table=sheet.tables[target.tableId];
   if(String(table.name())!==target.table)return JSON.stringify({status:'stale'});
   if(target.mode==='focus'){table.selectionRange=table.ranges.byName(target.address);numbers.activate();}
-  else if(target.mode!=='check'||String(table.selectionRange.name())!==target.address)return JSON.stringify({status:'stale'});
-  return JSON.stringify({status:'focused',value:table.cells.byName(target.address).formattedValue()});
+  else {var selected=String(table.selectionRange.name()).replace(/\$/g,'');var single=/^([A-Z]+[1-9][0-9]*)(?::\1)?$/.exec(selected);if(!['check','apply'].includes(target.mode)||!single||single[1]!==target.address)return JSON.stringify({status:'stale',stage:'selection'});}
+  var cell=table.cells.byName(target.address),value=cell.formattedValue();
+  if(target.mode==='apply'){
+   ObjC.import('Foundation');
+   var input=$.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile;
+   var request=JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input,$.NSUTF8StringEncoding)));
+   if(typeof request.expected!=='string'||value!==request.expected||typeof request.replacement!=='string'||request.replacement.length>2000||/^[=+@]/.test(request.replacement))return JSON.stringify({status:'stale'});
+   if(String(cell.formula()||'').trim())return JSON.stringify({status:'formula'});
+   cell.value=request.replacement;
+   return JSON.stringify({status:String(cell.formattedValue())===request.replacement?'applied':'unavailable'});
+  }
+  return JSON.stringify({status:'focused',value:value});
  }catch(error){return JSON.stringify({status:Number(error.errorNumber)===-1743?'permission':'unavailable'});}
 }

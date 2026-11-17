@@ -3,7 +3,8 @@ function address(row,column){let label='';while(column>0){column--;label=String.
 function scanSnapshot(snapshot){
  if(snapshot.status!=='snapshot')return {status:snapshot.status,reason:snapshot.reason};
  if(!snapshot.cells.length)return {status:'waiting',reason:'The active sheet has no populated values to inspect.'};
- const engine=getEngine(); let count=0,critical=false;const items=[];
+ const engine=getEngine(); let count=0,critical=false,selectedItem;const items=[];
+ const replacements=new Map(),counters=new Map();
  const tables=new Map();
  for(const cell of snapshot.cells){const key=cell.tableId??'excel';if(!tables.has(key))tables.set(key,[]);tables.get(key).push(cell);}
  const contexts=new Map();
@@ -19,13 +20,26 @@ function scanSnapshot(snapshot){
   if(!findings.length)continue;
   count+=findings.length;
   critical ||= findings.some(f=>f.is_blocking||f.severity==='critical');
-  if(items.length<50){
-   // Mask suggestions are previews. Never write into a user's workbook.
-   const result=Sanitizer.sanitizePrompt(source,findings,engine);
-   items.push({id,cell:location,categories:[...new Set(findings.map(f=>f.category))],preview:result.sanitized_content.slice(prefix.length).slice(0,2000)});
+  const tokens=new Map();
+  for(const finding of findings){
+   const key=finding.category+'\0'+finding.matched_value;
+   if(!replacements.has(key)){
+    const seed=Sanitizer.generatePlaceholderMap([{...finding}])[finding.matched_value];
+    const kind=seed.replace(/_\d+\]$/,'');const next=(counters.get(kind)||0)+1;counters.set(kind,next);replacements.set(key,kind+'_'+next+']');
+   }
+   tokens.set(finding,replacements.get(key));
+  }
+  const selected=snapshot.selected&&snapshot.selected.tableId===cell.tableId&&snapshot.selected.address===address(cell.row,cell.column);
+  if(items.length<50||selected){
+   let masked=source;
+   for(const finding of [...findings].sort((a,b)=>b.location_meta.start-a.location_meta.start))masked=masked.slice(0,finding.location_meta.start)+tokens.get(finding)+masked.slice(finding.location_meta.end);
+   const fullPreview=masked.slice(prefix.length);
+   const item={id,cell:location,categories:[...new Set(findings.map(f=>f.category))],preview:fullPreview.slice(0,2000),canApply:fullPreview.length<=2000&&!/^[=+@]/.test(fullPreview)};
+   if(items.length<50)items.push(item);
+   if(selected)selectedItem=item;
   }
  }
- return {status:count?(critical?'risk':'warn'):'clear',sheet:snapshot.sheet,source:snapshot.source||'excel',count,items,scanned:snapshot.cells.length,checkedAt:Date.now()};
+ return {status:count?(critical?'risk':'warn'):'clear',sheet:snapshot.sheet,source:snapshot.source||'excel',count,items,selectedItem,scanned:snapshot.cells.length,checkedAt:Date.now()};
 }
 module.exports={scanSnapshot};
 
