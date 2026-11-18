@@ -2,6 +2,7 @@ const {app,BrowserWindow,ipcMain,session,screen,nativeTheme,shell}=require('elec
 const path=require('node:path'),fs=require('node:fs');
 const {spawn}=require('node:child_process');
 const {scanSnapshot}=require('./scan.cjs');
+const {reviewSample}=require('./sample-review.cjs');
 const {createBulkPlan,summarizePlan,runBulk}=require('./bulk-review.cjs');
 const {createMacMonitor}=require('./mac-monitor.cjs');
 const {resolveSource}=require('./monitor-source.cjs');
@@ -27,10 +28,10 @@ function start(source='excel'){
    try{
     const snapshot=JSON.parse(line);
     if(bulkRunning){lastUpdate=Date.now();continue;}
-    if(latestResult&&snapshot.status==='waiting'&&snapshot.reason?.startsWith('Reading the active')){send({...latestResult,refreshing:true,monitoring:true});continue;}
-    lastUpdate=Date.now();const result=scanSnapshot(snapshot);result.revision=++revision;result.monitoring=true;
+    if(latestResult&&snapshot.status==='waiting'&&snapshot.reason?.startsWith('Reading the active'))continue;
+    lastUpdate=Date.now();const result=scanSnapshot(snapshot);result.revision=++revision;result.monitoring=snapshot.status!=='permission';
     latestSnapshot=snapshot.status==='snapshot'?snapshot:null;latestResult=snapshot.status==='snapshot'?result:null;targets=createTargets(snapshot,result);send(result);if(snapshot.status==='snapshot')automaticHint(snapshot);
-    if(snapshot.status==='permission'){disconnect();send({...result,monitoring:false});return;}
+    if(snapshot.status==='permission'){disconnect();return;}
    }catch{latestSnapshot=null;latestResult=null;targets.clear();send({status:'waiting',reason:'Could not inspect this sheet. Monitoring will retry.'});}
   }
  });
@@ -59,7 +60,7 @@ function updateOutline(rect,epoch){
  outline.setIgnoreMouseEvents(true);outline.webContents.setWindowOpenHandler(()=>({action:'deny'}));outline.webContents.on('will-navigate',event=>event.preventDefault());
  outline.once('ready-to-show',()=>{if(!outline.isDestroyed()&&epoch===reviewEpoch)outline.showInactive();});outline.loadFile(path.join(__dirname,'highlight.html'));
 }
-async function showCellHint(target,epoch,original){
+async function showCellHint(target,epoch){
  const rect=await nativeAnchor();
  if(epoch!==reviewEpoch)return {status:'stale',reason:'Review cancelled.'};
  if(rect.status==='background')return {status:'focused',reason:'Cell selected. Return to Numbers to see the suggestion.'};
@@ -67,7 +68,7 @@ async function showCellHint(target,epoch,original){
  hint=new BrowserWindow({...bounds,frame:false,transparent:true,resizable:false,alwaysOnTop:true,show:false,skipTaskbar:true,title:'PromptShield cell suggestion',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'popover',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  updateOutline(rect,epoch);hintTarget=target;
  const popup=hint;popup.webContents.setWindowOpenHandler(()=>({action:'deny'}));popup.webContents.on('will-navigate',event=>event.preventDefault());
- popup.webContents.once('did-finish-load',()=>{if(popup.isDestroyed()||epoch!==reviewEpoch)return;popup.webContents.send('cell-hint',{...target.item,side:bounds.x>(rect.x??win.getBounds().x)?'right':'left',anchored:rect.status==='anchor',applied:!!target.applied,original:target.applied?'Masked':target.item.categories.includes('email')?original:'Sensitive value',theme:nativeTheme.shouldUseDarkColors?'dark':'light'});popup.showInactive();});popup.loadFile(path.join(__dirname,'hint.html'));
+ popup.webContents.once('did-finish-load',()=>{if(popup.isDestroyed()||epoch!==reviewEpoch)return;popup.webContents.send('cell-hint',{...target.item,side:bounds.x>(rect.x??win.getBounds().x)?'right':'left',anchored:rect.status==='anchor',applied:!!target.applied,theme:nativeTheme.shouldUseDarkColors?'dark':'light'});popup.showInactive();});popup.loadFile(path.join(__dirname,'hint.html'));
  let busy=false;hintTimer=setInterval(async()=>{if(busy||hintApplying||popup.isDestroyed())return;busy=true;try{
   const checkedHash=target.hash;const check=await focusTarget(target,resource('focus-numbers-mac.js'),'check');if(hintApplying||checkedHash!==target.hash)return;if(check.status!=='focused'){hideHint();return;}
   const anchor=await nativeAnchor();if(popup.isDestroyed())return;
@@ -84,7 +85,7 @@ async function reviewCell(event,id,scanRevision){
   const focused=await focusTarget(target,resource('focus-numbers-mac.js'));
   if(epoch!==reviewEpoch)return {status:'stale',reason:'Review cancelled.'};
   if(focused.status!=='focused')return {status:focused.status,reason:'This cell changed or Numbers is unavailable. Start a fresh scan.'};
-  const result=await showCellHint(target,epoch,focused.original);
+  const result=await showCellHint(target,epoch);
   if(result.status==='focused'&&hint)autoHintKey=JSON.stringify([target.documentId,target.sheet,target.tableId,target.address,target.hash]);
   return result;
  }catch{return {status:'unavailable',reason:'Could not locate this cell. Keep Numbers open and run a fresh scan.'};}finally{manualReviewing=false;}
@@ -106,19 +107,25 @@ async function automaticHint(snapshot){
  try{
   const focused=await focusTarget(target,resource('focus-numbers-mac.js'),'check');
   if(focused.status!=='focused'||epoch!==reviewEpoch||!monitor)return;
-  const result=await showCellHint(target,epoch,focused.original);
+  const result=await showCellHint(target,epoch);
   if(result.status==='accessibility'&&!accessNotified){accessNotified=true;if(win&&!win.isDestroyed())win.webContents.send('inline-status',result);}
   if(result.status==='focused'&&hint)autoHintKey=key;
  }catch{}finally{autoBusy=false;}
 }
 app.whenReady().then(()=>{
  session.defaultSession.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!details.url.startsWith('file:')&&!details.url.startsWith('devtools:')}));
- const area=screen.getPrimaryDisplay().workArea,width=Math.min(360,area.width),height=Math.min(570,area.height);
+ const area=screen.getPrimaryDisplay().workArea,width=Math.min(430,area.width),height=Math.min(650,area.height);
  win=new BrowserWindow({width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'under-window',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',event=>event.preventDefault());
  ipcMain.handle('set-theme',(event,theme)=>{if(mainSender(event)&&(theme==='light'||theme==='dark')){nativeTheme.themeSource=theme;if(hint&&!hint.isDestroyed())hint.webContents.send('hint-theme',theme);}});
- ipcMain.handle('start-monitor',(event,source)=>{if(mainSender(event))start(source);});
- ipcMain.handle('stop-monitor',event=>{if(mainSender(event))stop();});
+ ipcMain.handle('review-sample',(event,masked)=>mainSender(event)?reviewSample(masked===true):null);
+ const changeMonitor = (event, action) => {
+  if (!mainSender(event)) return;
+  if (bulkRunning || hintApplying) return {status:'busy',reason:'Wait until the current mask finishes.'};
+  action();
+ };
+ ipcMain.handle('start-monitor',(event,source)=>changeMonitor(event,()=>start(source)));
+ ipcMain.handle('stop-monitor',event=>changeMonitor(event,stop));
  ipcMain.handle('close-guard',event=>{if(mainSender(event))app.quit();});
  ipcMain.handle('review-cell',reviewCell);
  ipcMain.handle('inline-hints',(event,enabled)=>{if(mainSender(event)&&typeof enabled==='boolean'){inlineEnabled=enabled;accessNotified=false;if(!enabled)hideHint();}});
@@ -149,8 +156,8 @@ app.whenReady().then(()=>{
   try{bulkPlan=createBulkPlan(latestSnapshot);return {status:'ready',...summarizePlan(bulkPlan)};}catch{return {status:'unavailable',reason:'Keep the Numbers sheet open and run a fresh scan.'};}
  });
  async function performBulk(plan,isUndo=false){
-  if(bulkRunning||hintApplying)return {status:'busy',reason:'A masking action is already running.'};
-  if(!latestSnapshot||latestSnapshot.documentId!==plan.documentId||latestSnapshot.sheet!==plan.sheet)return {status:'stale',reason:'Return to the reviewed Numbers sheet, then try again.'};
+  if(bulkRunning||hintApplying)return {status:'busy',reason:'A masking action is already running.',canUndo:!!undoBatch};
+  if(!latestSnapshot||latestSnapshot.documentId!==plan.documentId||latestSnapshot.sheet!==plan.sheet)return {status:'stale',reason:'Return to the reviewed Numbers sheet, then try again.',canUndo:!!undoBatch};
   const epoch=bulkEpoch;bulkRunning=true;bulkCancelled=false;hideHint();
   bulkUpdate({phase:'running',action:isUndo?'undo':'mask',total:plan.entries.length,processed:0,applied:0,skipped:0,canUndo:false});
   try{
@@ -163,7 +170,7 @@ app.whenReady().then(()=>{
   }finally{bulkRunning=false;}
  }
  ipcMain.handle('apply-bulk',(event,id)=>{
-  if(!mainSender(event)||!bulkPlan||id!==bulkPlan.id)return {status:'stale',reason:'Review the sheet again before applying.'};
+  if(!mainSender(event)||!bulkPlan||id!==bulkPlan.id)return {status:'stale',reason:'Review the sheet again before applying.',canUndo:!!undoBatch};
   return performBulk(bulkPlan);
  });
  ipcMain.handle('cancel-bulk',event=>{if(mainSender(event)){bulkCancelled=true;bulkPlan=null;}});

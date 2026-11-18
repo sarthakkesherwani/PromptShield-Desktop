@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.promptshield.desktop",
     "productName": "PromptShield Desktop",
+    "icon": "build/icon.png",
     "files": [
       "src/**",
       "detector-bundle.cjs",

@@ -1,6 +1,7 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('guard',{
  platform:process.platform,
+ reviewSample:masked=>ipcRenderer.invoke('review-sample',masked),
  prepareBulk:()=>ipcRenderer.invoke('prepare-bulk'),
  applyBulk:id=>ipcRenderer.invoke('apply-bulk',id),
  cancelBulk:()=>ipcRenderer.invoke('cancel-bulk'),

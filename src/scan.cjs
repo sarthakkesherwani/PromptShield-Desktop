@@ -4,7 +4,7 @@ function scanSnapshot(snapshot,{maxItems=50}={}){
  const itemLimit=Math.max(0,Math.min(20000,Number.isInteger(maxItems)?maxItems:50));
  if(snapshot.status!=='snapshot')return {status:snapshot.status,reason:snapshot.reason};
  if(!snapshot.cells.length)return {status:'waiting',reason:'The active sheet has no populated values to inspect.'};
- const engine=getEngine(); let count=0,critical=false,selectedItem;const items=[];
+ const engine=getEngine(); let count=0,affectedCells=0,critical=false,selectedItem;const items=[];
  const replacements=new Map(),counters=new Map();
  const tables=new Map();
  for(const cell of snapshot.cells){const key=cell.tableId??'excel';if(!tables.has(key))tables.set(key,[]);tables.get(key).push(cell);}
@@ -19,6 +19,7 @@ function scanSnapshot(snapshot,{maxItems=50}={}){
   const source=prefix+cell.text;
   const findings=engine.scanTextSegment(source,'cell',location,{columnHeader});
   if(!findings.length)continue;
+  affectedCells++;
   count+=findings.length;
   critical ||= findings.some(f=>f.is_blocking||f.severity==='critical');
   const tokens=new Map();
@@ -35,12 +36,12 @@ function scanSnapshot(snapshot,{maxItems=50}={}){
    let masked=source;
    for(const finding of [...findings].sort((a,b)=>b.location_meta.start-a.location_meta.start))masked=masked.slice(0,finding.location_meta.start)+tokens.get(finding)+masked.slice(finding.location_meta.end);
    const fullPreview=masked.slice(prefix.length);
-   const item={id,cell:location,categories:[...new Set(findings.map(f=>f.category))],preview:fullPreview.slice(0,2000),canApply:fullPreview.length<=2000&&!/^[=+@]/.test(fullPreview)};
+   const item={id,cell:location,categories:[...new Set(findings.map(f=>f.category))],preview:fullPreview.slice(0,2000),truncated:fullPreview.length>2000,canApply:fullPreview.length<=2000&&!/^[=+@]/.test(fullPreview)};
    if(items.length<itemLimit)items.push(item);
    if(selected)selectedItem=item;
   }
  }
- return {status:count?(critical?'risk':'warn'):'clear',sheet:snapshot.sheet,source:snapshot.source||'excel',count,items,selectedItem,scanned:snapshot.cells.length,checkedAt:Date.now()};
+ return {status:count?(critical?'risk':'warn'):'clear',sheet:snapshot.sheet,source:snapshot.source||'excel',count,affectedCells,items,selectedItem,scanned:snapshot.cells.length,checkedAt:Date.now()};
 }
 module.exports={scanSnapshot};
 

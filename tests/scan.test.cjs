@@ -52,3 +52,19 @@ test('truncated suggestions cannot be applied to avoid dropping the rest of a ce
  const r=scanSnapshot({status:'snapshot',cells:[{row:1,column:1,text:'email: demo@example.com '+ 'ordinary text '.repeat(300)}]});
  assert.equal(r.items[0].preview.length,2000);assert.equal(r.items[0].canApply,false);
 });
+
+test('affected cell total includes hidden results and counts a multi-match cell once',()=>{
+ const cells=Array.from({length:51},(_,i)=>({row:i+1,column:1,text:'a@example.com and b@example.com'}));
+ const result=scan(cells);
+ assert.equal(result.items.length,50);
+ assert.equal(result.affectedCells,51);
+ assert.equal(result.count,102);
+});
+
+test('copy can distinguish shortened previews from complete, read-only suggestions',()=>{
+ const result=scan([
+  {row:1,column:1,text:'=demo@example.com'},
+  {row:2,column:1,text:'demo@example.com '+'ordinary text '.repeat(300)}
+ ]);
+ assert.deepEqual(result.items.map(item=>[item.truncated,item.canApply]),[[false,false],[true,false]]);
+});
