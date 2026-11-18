@@ -115,7 +115,7 @@ async function automaticHint(snapshot){
 app.whenReady().then(()=>{
  session.defaultSession.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!details.url.startsWith('file:')&&!details.url.startsWith('devtools:')}));
  const area=screen.getPrimaryDisplay().workArea,width=Math.min(430,area.width),height=Math.min(650,area.height);
- win=new BrowserWindow({width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'under-window',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
+ win=new BrowserWindow({paintWhenInitiallyHidden:false,width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'under-window',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',event=>event.preventDefault());
  ipcMain.handle('set-theme',(event,theme)=>{if(mainSender(event)&&(theme==='light'||theme==='dark')){nativeTheme.themeSource=theme;if(hint&&!hint.isDestroyed())hint.webContents.send('hint-theme',theme);}});
  ipcMain.handle('review-sample',(event,masked)=>mainSender(event)?reviewSample(masked===true):null);
@@ -179,7 +179,7 @@ app.whenReady().then(()=>{
   return performBulk(undoBatch,true);
  });
  ipcMain.handle('dismiss-hint',event=>{if(hint&&!hint.isDestroyed()&&event.sender===hint.webContents){if(hintTarget)dismissedHintKey=JSON.stringify([hintTarget.documentId,hintTarget.sheet,hintTarget.tableId,hintTarget.address,hintTarget.hash]);hideHint();}});
- win.once('ready-to-show',()=>win.show());win.loadFile(path.join(__dirname,'index.html'));
+ win.webContents.once('did-finish-load',()=>{if(win&&!win.isDestroyed())win.show();});win.loadFile(path.join(__dirname,'index.html'));
  win.on('closed',()=>{stop();win=null;});
 });
 app.on('window-all-closed',()=>app.quit());app.on('before-quit',stop);

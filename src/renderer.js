@@ -1,4 +1,18 @@
 const $=id=>document.getElementById(id);
+const launchRoot = document.documentElement;
+function startEntrance() {
+ if (document.hidden) return;
+ document.removeEventListener('visibilitychange', startEntrance);
+ if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  delete launchRoot.dataset.launch;
+ } else {
+  launchRoot.dataset.launch = 'playing';
+  window.setTimeout(() => delete launchRoot.dataset.launch, 850);
+ }
+}
+document.addEventListener('visibilitychange', startEntrance);
+startEntrance();
+
 const categoryLabels={password:'Password',otp:'OTP',api_key:'API key',access_token:'Access token',private_key:'Private key',connection_string:'Connection string',secret:'Secret',credential:'Credential',email:'Email'};
 const labels={permission:'Spreadsheet access needed',paused:'Review before you share',waiting:'Waiting for Excel',limited:'A closer look is needed.',clear:'No sensitive values detected.',warn:'Sensitive data found.',risk:'Credentials need attention.'};
 const sourceNames={excel:'Excel',numbers:'Numbers'};
