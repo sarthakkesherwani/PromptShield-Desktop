@@ -146,3 +146,50 @@ main { padding-top:16px; }
  .sheet-art { display:none; }
  .review-cover { border:1px solid CanvasText; }
 }
+
+/* Group related findings like rows in a document inspector. */
+#findings { border-radius:14px; }
+.finding {
+ margin:0;border:1px solid var(--line);border-radius:0;
+ background:var(--surface);padding:14px;
+}
+.finding:first-of-type { border-radius:14px 14px 0 0; }
+.finding:last-of-type { border-radius:0 0 14px 14px; }
+.finding:only-of-type { border-radius:14px; }
+.finding + .finding { border-top:0; }
+.finding h3 { text-align:left;font-size:14px;line-height:1.3;color:var(--ink); }
+.cell-ref { text-align:right;border-radius:5px;background:var(--field);padding:2px 6px;font-size:11px; }
+.finding label { font-size:11px;letter-spacing:0; }
+.finding textarea { min-height:40px;height:40px;resize:vertical; }
+.finding-bottom { justify-content:flex-end; }
+.bulk-toolbar #bulk-undo { margin-inline-start:auto;color:var(--accent); }
+.bulk-panel { padding:15px;border-radius:14px;background:var(--surface); }
+#bulk-title { font-size:15px;letter-spacing:-.3px; }
+#bulk-samples { margin:10px 0;border-block:1px solid var(--line); }
+#bulk-samples:empty,.bulk-panel p:empty { display:none; }
+#bulk-samples>div { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;padding:6px 0;align-items:baseline; }
+#bulk-samples>div+div { border-top:1px solid var(--line); }
+#bulk-samples dt,#bulk-samples dd { margin:0;overflow-wrap:anywhere;font:12px/1.4 ui-monospace,monospace; }
+#bulk-samples dd { color:var(--accent); }
+#bulk-progress { font-variant-numeric:tabular-nums; }
+.bulk-panel[data-phase=partial] { border-inline-start:3px solid var(--warn); }
+.bulk-panel[data-phase=done] { border-inline-start:3px solid var(--safe); }
+#bulk-meter { margin-top:10px; }
+
+#sample-dialog { padding:0;overflow:auto;border-radius:17px;box-shadow:0 14px 36px #180a1033; }
+.sheet-header,.sheet-actions { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px; }
+.sheet-header { border-bottom:1px solid var(--line); }
+.sheet-header p { font-size:12px; }
+.sheet-close { width:27px;height:27px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--field);color:var(--muted);font:18px/1 system-ui; }
+.sheet-body { padding:16px; }
+#sample-dialog table { margin:0;border:1px solid var(--line);border-spacing:0;border-collapse:separate;border-radius:9px;overflow:hidden; }
+#sample-dialog th,#sample-dialog td { padding:7px;overflow-wrap:anywhere; }
+#sample-dialog thead { background:var(--field); }
+#sample-dialog thead th,#sample-dialog tbody th { font-size:11px;font-weight:550; }
+#sample-dialog tbody th { background:var(--field);color:var(--subtle);width:26px; }
+#sample-dialog tbody tr:last-child>* { border-bottom:0; }
+#sample-dialog samp { font:12px/1.5 ui-monospace,monospace; }
+#sample-dialog[data-masked=true] samp { color:var(--accent);background:var(--mask);border-radius:4px;padding:2px 4px; }
+#sample-result { min-height:3em;margin-top:12px; }
+.sheet-actions { justify-content:flex-end;padding-top:10px;padding-bottom:10px;border-top:1px solid var(--line); }
+.sheet-actions button { flex:none;min-width:116px; }

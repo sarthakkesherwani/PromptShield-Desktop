@@ -127,12 +127,12 @@ function render(data){
 }
 
 function createFindingCard(item, source) {
-  const card=document.createElement('article');card.className='glass finding';
+  const card=document.createElement('article');card.className='finding';
   const top=document.createElement('div');top.className='finding-top';
   const ref=document.createElement('span');ref.className='cell-ref';ref.textContent=item.cell;
-  const title=document.createElement('h3');title.textContent=item.categories.map(category=>categoryLabels[category]||category.replaceAll('_',' ')).join(' · ');top.append(ref,title);
-  const label=document.createElement('label');label.textContent='SUGGESTED MASKED VALUE';
-  const preview=document.createElement('textarea');preview.readOnly=true;preview.value=item.preview;preview.setAttribute('aria-label',`Masked preview for ${item.cell}`);
+  const title=document.createElement('h3');title.textContent=item.categories.map(category=>categoryLabels[category]||category.replaceAll('_',' ')).join(' · ');top.append(title,ref);
+  const label=document.createElement('label');label.textContent='Suggested replacement';
+  const preview=document.createElement('textarea');preview.readOnly=true;preview.id='finding-preview-'+item.id;label.htmlFor=preview.id;preview.value=item.preview;preview.setAttribute('aria-label',`Masked preview for ${item.cell}`);
   const bottom=document.createElement('div');bottom.className='finding-bottom';
   const hint=document.createElement('small');hint.textContent=item.truncated?'Preview shortened. Review the full cell in '+sourceName()+'.':'Review before pasting.';
   const copy=document.createElement('button');copy.className='copy-button';copy.textContent='Copy value';copy.disabled=!!item.truncated;copy.setAttribute('aria-label',`Copy masked value for ${item.cell}`);
@@ -146,6 +146,7 @@ function createFindingCard(item, source) {
    locate.onclick = () => reviewFinding(locate, item, false);
    bottom.append(locate);
   }
+  bottom.append(copy);
   if (source === 'numbers' && item.canApply && window.guard?.applyCell) {
    const apply = document.createElement('button');
    apply.className = 'locate-button apply-button glass-button';
@@ -155,13 +156,13 @@ function createFindingCard(item, source) {
    apply.onclick = () => reviewFinding(apply, item, true);
    bottom.append(apply);
   }
-  bottom.append(copy);
   card.append(top,label,preview,bottom);
   return card;
 }
 
 function showBulkState(data){
  bulkBusy = data.phase === 'running';
+ $('bulk-panel').dataset.phase = bulkBusy ? 'running' : data.status || data.phase;
  if (!bulkBusy) cancellingBatch = false;
  const progress = $('bulk-meter');
  progress.hidden = !bulkBusy;
@@ -173,7 +174,7 @@ function showBulkState(data){
  if(data.phase==='idle'){bulkPlanId=null;$('bulk-panel').hidden=true;$('bulk-undo').hidden=true;return;}
  $('bulk-actions').hidden=false;$('bulk-panel').hidden=false;
  if (!bulkBusy) bulkPlanId = null;
- if(bulkBusy){$('bulk-title').textContent=data.action==='undo'?'Restoring cells…':'Masking this sheet…';$('bulk-apply').hidden=true;$('bulk-cancel').hidden=false;if(!$('bulk-cancel').disabled)$('bulk-cancel').textContent='Cancel remaining';$('bulk-progress').textContent=`${data.processed} of ${data.total} cells checked · ${data.applied} applied · ${data.skipped} skipped`;}
+ if(bulkBusy){$('bulk-samples').replaceChildren();$('bulk-summary').textContent='';$('bulk-title').textContent=data.action==='undo'?'Restoring cells…':'Masking this sheet…';$('bulk-apply').hidden=true;$('bulk-cancel').hidden=false;if(!$('bulk-cancel').disabled)$('bulk-cancel').textContent='Cancel remaining';$('bulk-progress').textContent=`${data.processed} of ${data.total} cells checked · ${data.applied} applied · ${data.skipped} skipped`;}
  else{$('bulk-title').textContent=data.status==='partial'?'Batch interrupted':data.status==='done'?'Batch complete':'Batch unavailable';$('bulk-summary').textContent=data.reason||'';$('bulk-samples').replaceChildren();$('bulk-progress').textContent='';$('bulk-apply').hidden=true;$('bulk-cancel').hidden=true;$('bulk-undo').hidden=!data.canUndo;}
 }
 $('bulk-review').onclick=async()=>{
@@ -181,10 +182,19 @@ $('bulk-review').onclick=async()=>{
  bulkRequest = true;
  syncControls();
  try{const plan=await window.guard.prepareBulk();if(plan.status!=='ready'){showBulkState({phase:'done',reason:plan.reason});return;}
-  bulkPlanId=plan.id;$('bulk-panel').hidden=false;$('bulk-title').textContent=`Mask ${plan.cells} cells on ${plan.sheet}?`;
+  bulkPlanId=plan.id;$('bulk-panel').dataset.phase='review';$('bulk-panel').hidden=false;$('bulk-title').textContent=`Mask ${plan.cells} cells on ${plan.sheet}?`;
   const categories=Object.entries(plan.categories).map(([key,count])=>`${categoryLabels[key]||key}: ${count}`).join(' · ');
   $('bulk-summary').textContent=`${categories}. ${plan.ineligible} incomplete suggestions excluded. Values on this sheet will be replaced. You can undo the last batch in this session.`;
-  $('bulk-samples').replaceChildren();for(const sample of plan.samples){const row=document.createElement('p');row.textContent=sample.cell+' → '+sample.replacement;$('bulk-samples').append(row);}
+  const samples = plan.samples.map(sample => {
+   const row = document.createElement('div');
+   const address = document.createElement('dt');
+   address.textContent = sample.cell;
+   const replacement = document.createElement('dd');
+   replacement.textContent = sample.replacement;
+   row.append(address, replacement);
+   return row;
+  });
+  $('bulk-samples').replaceChildren(...samples);
   $('bulk-progress').textContent='Changed cells and formulas will be skipped.';$('bulk-apply').hidden=plan.cells===0;$('bulk-apply').textContent=`Apply ${plan.cells} masks`;$('bulk-cancel').hidden=false;$('bulk-cancel').textContent='Keep reviewing';
  }catch{showBulkState({phase:'done',reason:'Could not prepare the sheet. Run a fresh scan.'});}finally{bulkRequest=false;syncControls();}
 };
@@ -288,16 +298,23 @@ async function renderSample(masked) {
   const rows = [];
   for (let i = 2; i < sample.cells.length; i += 2) {
    const row = document.createElement('tr');
-   row.insertCell().textContent = sample.cells[i];
+   const rowNumber = document.createElement('th');
+   rowNumber.scope = 'row';
+   rowNumber.textContent = String(i / 2 + 1);
+   row.append(rowNumber);
+   const contact = document.createElement('samp');
+   contact.textContent = sample.cells[i];
+   row.insertCell().append(contact);
    row.insertCell().textContent = sample.cells[i + 1];
    rows.push(row);
   }
   $('sample-rows').replaceChildren(...rows);
+  sampleDialog.dataset.masked = String(masked);
   $('sample-result').textContent = masked
    ? `Rescan: ${sample.count} findings in ${sample.scanned} cells. Both orders retain the same contact label.`
    : `Scan: ${sample.count} findings in ${sample.scanned} cells. The same email appears in two orders.`;
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-   for (const cell of $('sample-rows').querySelectorAll('td:first-child')) {
+   for (const cell of $('sample-rows').querySelectorAll('samp')) {
     cell.animate([{opacity:0.55, transform:'translateY(3px)'}, {opacity:1, transform:'translateY(0)'}], {duration:200, easing:'ease-out'});
    }
   }
@@ -316,6 +333,7 @@ $('sample-open').onclick = () => {
  $('sample-result').textContent = 'Scanning sample…';
  $('sample-toggle').textContent = 'Mask sample';
  sampleMasked = false;
+ delete sampleDialog.dataset.masked;
  sampleDialog.showModal();
  renderSample(false);
 };
