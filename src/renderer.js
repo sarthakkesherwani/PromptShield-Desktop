@@ -14,7 +14,7 @@ document.addEventListener('visibilitychange', startEntrance);
 startEntrance();
 
 const categoryLabels={password:'Password',otp:'OTP',api_key:'API key',access_token:'Access token',private_key:'Private key',connection_string:'Connection string',secret:'Secret',credential:'Credential',email:'Email'};
-const labels={permission:'Spreadsheet access needed',paused:'Review before you share',waiting:'Waiting for Excel',limited:'A closer look is needed.',clear:'No sensitive values detected.',warn:'Sensitive data found.',risk:'Credentials need attention.'};
+const labels={permission:'Spreadsheet access needed',paused:'Review your sheet',waiting:'Waiting for Excel',limited:'A closer look is needed.',clear:'No sensitive values detected.',warn:'Sensitive data found.',risk:'Credentials need attention.'};
 const sourceNames={excel:'Excel',numbers:'Numbers'};
 try{const saved=localStorage.getItem('guard-source');$('source').value=(saved==='numbers'&&window.guard?.platform==='darwin')?'numbers':saved==='excel'?'excel':window.guard?.platform==='darwin'?'numbers':'excel';}catch{}
 const sourceName=()=>sourceNames[$('source').value]||'Excel';
@@ -45,11 +45,7 @@ function setRunning(value) {
  monitoring = value;
  $('start-label').textContent = value ? 'Reconnect' : 'Start monitoring';
 }
-let themeTimer;
-function setTheme(theme,animate=false){if(animate){document.body.classList.add('theme-changing');clearTimeout(themeTimer);themeTimer=setTimeout(()=>document.body.classList.remove('theme-changing'),400);}document.documentElement.dataset.theme=theme;if(window.guard?.setTheme)window.guard.setTheme(theme).catch(()=>{});const themeAction=theme==='dark'?'Switch to light mode':'Switch to dark mode';$('theme').setAttribute('aria-label',themeAction);$('theme').setAttribute('aria-pressed',String(theme==='dark'));$('theme').title=themeAction;try{localStorage.setItem('guard-theme',theme);}catch{}}
-const systemTheme=()=>window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
-try{const saved=localStorage.getItem('guard-theme');setTheme(saved==='dark'||saved==='light'?saved:systemTheme());}catch{setTheme(systemTheme());}
-$('theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark',true);
+document.documentElement.dataset.platform = window.guard?.platform || 'preview';
 let renderedFindingsKey, activeRevision, bulkPlanId;
 const findingCards = new Map();
 const overflowNote = document.createElement('p');
@@ -90,6 +86,8 @@ function render(data){
  $('status').dataset.state=status;$('heading').textContent=status==='waiting'?`Waiting for ${sourceName()}`:labels[status];$('state-label').textContent=pills[status];
  $('message').textContent=data.reason||`${data.sheet} · ${data.scanned} populated cells inspected. ${data.count?'Review the findings below.':'No matches in the inspected values.'}`;
  const inspected=['clear','warn','risk'].includes(status);
+ document.querySelector('.metrics').hidden = !inspected;
+ document.querySelector('.results-section').hidden = !inspected;
  $('cell-count').textContent=inspected?String(data.scanned):'—';$('finding-count').textContent=inspected?String(data.count):'—';
  $('results-count').textContent=inspected?(data.items?.length?`${data.affectedCells} affected ${data.affectedCells===1?'cell':'cells'}`:'Nothing to review'):'Awaiting scan';
  $('checked-time').textContent=inspected&&data.checkedAt?`Checked ${new Date(data.checkedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:(status==='paused'?'Monitoring paused':'Awaiting inspection');

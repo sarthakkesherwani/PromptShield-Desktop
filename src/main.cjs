@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,session,screen,nativeTheme,shell}=require('electron');
+const {app,BrowserWindow,ipcMain,session,screen,shell}=require('electron');
 const path=require('node:path'),fs=require('node:fs');
 const {spawn}=require('node:child_process');
 const {scanSnapshot}=require('./scan.cjs');
@@ -68,7 +68,7 @@ async function showCellHint(target,epoch){
  hint=new BrowserWindow({...bounds,frame:false,transparent:true,resizable:false,alwaysOnTop:true,show:false,skipTaskbar:true,title:'PromptShield cell suggestion',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'popover',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  updateOutline(rect,epoch);hintTarget=target;
  const popup=hint;popup.webContents.setWindowOpenHandler(()=>({action:'deny'}));popup.webContents.on('will-navigate',event=>event.preventDefault());
- popup.webContents.once('did-finish-load',()=>{if(popup.isDestroyed()||epoch!==reviewEpoch)return;popup.webContents.send('cell-hint',{...target.item,side:bounds.x>(rect.x??win.getBounds().x)?'right':'left',anchored:rect.status==='anchor',applied:!!target.applied,theme:nativeTheme.shouldUseDarkColors?'dark':'light'});popup.showInactive();});popup.loadFile(path.join(__dirname,'hint.html'));
+ popup.webContents.once('did-finish-load',()=>{if(popup.isDestroyed()||epoch!==reviewEpoch)return;popup.webContents.send('cell-hint',{...target.item,side:bounds.x>(rect.x??win.getBounds().x)?'right':'left',anchored:rect.status==='anchor',applied:!!target.applied});popup.showInactive();});popup.loadFile(path.join(__dirname,'hint.html'));
  let busy=false;hintTimer=setInterval(async()=>{if(busy||hintApplying||popup.isDestroyed())return;busy=true;try{
   const checkedHash=target.hash;const check=await focusTarget(target,resource('focus-numbers-mac.js'),'check');if(hintApplying||checkedHash!==target.hash)return;if(check.status!=='focused'){hideHint();return;}
   const anchor=await nativeAnchor();if(popup.isDestroyed())return;
@@ -115,9 +115,8 @@ async function automaticHint(snapshot){
 app.whenReady().then(()=>{
  session.defaultSession.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!details.url.startsWith('file:')&&!details.url.startsWith('devtools:')}));
  const area=screen.getPrimaryDisplay().workArea,width=Math.min(430,area.width),height=Math.min(650,area.height);
- win=new BrowserWindow({paintWhenInitiallyHidden:false,width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{vibrancy:'under-window',visualEffectState:'active'}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
+ win=new BrowserWindow({paintWhenInitiallyHidden:false,width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{frame:true,transparent:false,titleBarStyle:'hiddenInset',trafficLightPosition:{x:15,y:19},fullscreenable:false}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',event=>event.preventDefault());
- ipcMain.handle('set-theme',(event,theme)=>{if(mainSender(event)&&(theme==='light'||theme==='dark')){nativeTheme.themeSource=theme;if(hint&&!hint.isDestroyed())hint.webContents.send('hint-theme',theme);}});
  ipcMain.handle('review-sample',(event,masked)=>mainSender(event)?reviewSample(masked===true):null);
  const changeMonitor = (event, action) => {
   if (!mainSender(event)) return;

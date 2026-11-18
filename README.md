@@ -1,6 +1,6 @@
 # PromptShield Desktop
 
-A local Excel and Apple Numbers privacy companion for macOS, with Excel support on Windows with a transparent, frameless floating window, a smooth logo reveal on launch, the PromptShield website’s crimson branding, light/dark appearance, and reviewable masked-value cards. The floating window checks the active worksheet every two seconds after you press **Start monitoring**. Green means no matches in inspected cell values, amber means sensitive data was detected, red means a blocking/critical credential was detected. Gray means paused, disconnected or unavailable. Uninspectable ranges never receive green status.
+PromptShield reviews the active Excel or Apple Numbers sheet locally on macOS. Windows supports desktop Excel. The floating inspector follows the system appearance and shows cell references with suggested replacements. The floating window checks the active worksheet every two seconds after you press **Start monitoring**. Green means no matches in inspected cell values, amber means sensitive data was detected, red means a blocking/critical credential was detected. Gray means paused, disconnected or unavailable. Uninspectable ranges never receive green status.
 
 ## Run on a Mac
 
@@ -48,7 +48,7 @@ This is a separate desktop repository. Pushes to main affecting Mac code trigger
 
 ## Floating window appearance
 
-The native window uses a transparent background, no system title bar, and always-on-top behavior. Drag the logo/header area to move it; close it with the × button. macOS adds native under-window vibrancy. The dashboard uses a solid background for readability over spreadsheets. The frame is fixed in size for reliable transparent-window behavior, fits within the primary display’s available work area, and scrolls for additional results. Reduced Motion skips the startup animation; Reduced Transparency uses a solid fallback. No screen capture permission is needed for the effect.
+Drag the header to position the always-on-top inspector. The Mac version uses native window controls. On Windows, use the close button in the header. Both appearances use opaque reading surfaces. Reduce Motion skips the entrance sequence. The findings list and scan counts appear after a completed scan.
 
 ## Find the cell and review the suggestion
 
@@ -72,7 +72,7 @@ The floating panel fits within a 430-point width. Buttons, newly added findings 
 
 **Apply mask** writes only the verified selected Numbers cell after your click. The expected value travels to the native adapter over standard input, never in process arguments or a temporary file. The popup remains with an Applied state after success; monitoring refreshes the other findings automatically. Formula cells and incomplete/truncated previews require manual review.
 
-The sun/moon glass switch animates between dark and light appearances, labels the next action clearly, and updates an open suggestion immediately. Unchanged scan findings retain their buttons and keyboard focus across refreshes.
+The dashboard and cell suggestion follow the system light or dark appearance. Unchanged scan findings retain their buttons and keyboard focus across refreshes.
 
 
 ## Mask a Numbers sheet in one batch
