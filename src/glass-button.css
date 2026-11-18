@@ -1,0 +1,38 @@
+/* The tinted base keeps white labels readable over light and dark surfaces. */
+button.glass-button {
+ --glass-x:30%; --glass-y:0%;
+ position:relative;isolation:isolate;overflow:hidden;
+ color:white;background-color:var(--button);
+ background-image:linear-gradient(172deg,#ffffff19 0%,transparent 42%,#45041936 100%);
+ border:1px solid #a92650;border-radius:999px;
+ box-shadow:inset 0 1px 1px #ffffff85,inset 0 -1px 1px #fff4,
+  0 2px 4px #53072525;
+ font-weight:600;
+}
+.glass-button::before {
+ content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+ background:radial-gradient(ellipse 48% 120% at var(--glass-x) var(--glass-y),#ffffff28,transparent 85%);
+}
+@supports (backdrop-filter:blur(8px)) {
+ button.glass-button { background-color:#a9113fe8;backdrop-filter:blur(9px) saturate(135%); }
+}
+@media (hover:hover) {
+ button.glass-button:hover:enabled { border-color:#c14469;box-shadow:inset 0 1px 1px #ffffffa1,inset 0 -1px 1px #fff5,0 3px 8px #53072538; }
+}
+button.glass-button:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
+button.glass-button:active:enabled { box-shadow:inset 0 2px 4px #55072170,inset 0 -1px 1px #ffffff6b; }
+button.glass-button:disabled { backdrop-filter:none;background:var(--field);color:var(--subtle);border-color:var(--line);box-shadow:none;opacity:1; }
+button.glass-button:disabled::before { display:none; }
+@media (prefers-reduced-motion:no-preference) {
+ button.glass-button { transition:transform 140ms ease-out,box-shadow 160ms ease-out; }
+ button.glass-button:active:enabled { transform:scale(.977); }
+}
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more) {
+ button.glass-button { backdrop-filter:none;background:var(--button);box-shadow:none; }
+ .glass-button::before { display:none; }
+}
+@media (forced-colors:active) {
+ button.glass-button { background:ButtonFace;color:ButtonText;border-color:ButtonText;box-shadow:none;backdrop-filter:none; }
+ button.glass-button:disabled { color:GrayText;border-color:GrayText; }
+ .glass-button::before { display:none; }
+}

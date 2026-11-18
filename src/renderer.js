@@ -148,7 +148,7 @@ function createFindingCard(item, source) {
   }
   if (source === 'numbers' && item.canApply && window.guard?.applyCell) {
    const apply = document.createElement('button');
-   apply.className = 'locate-button apply-button';
+   apply.className = 'locate-button apply-button glass-button';
    apply.textContent = 'Apply mask';
    apply.setAttribute('aria-label', `Apply mask to ${item.cell}`);
    hint.hidden = true;

@@ -12,6 +12,6 @@ button:disabled { opacity:.5;cursor:default; }
 #dismiss-hint { margin-left:auto;font-size:19px;line-height:1;border:0;background:transparent; }
 .detail { display:grid;gap:4px;padding:10px 0; }.detail label { color:var(--subtle);font-size:11px; }
 textarea { width:100%;height:38px;resize:none;padding:8px;border:1px solid var(--line);border-left:3px solid var(--accent);color:var(--ink);background:var(--field);border-radius:6px;font:12px/1.4 ui-monospace,monospace; }
-footer { justify-content:flex-end; }#hint-apply { background:var(--button);color:var(--button-ink);border-color:transparent; }
+footer { justify-content:flex-end; }
 @media (prefers-reduced-motion:no-preference) { .popover { animation:enter 160ms ease-out; } }
 @keyframes enter { from { opacity:.6;transform:translateY(3px); } }

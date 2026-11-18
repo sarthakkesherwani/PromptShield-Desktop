@@ -37,7 +37,6 @@ h1 { margin:6px 0 4px;font-size:clamp(21px,6vw,26px);font-weight:630;line-height
 .primary-button,.actions .secondary-button { min-height:36px; }
 .play-icon { font-size:10px; }
 button:not(:disabled):hover { border-color:var(--accent); }
-.primary-button:not(:disabled):hover { background:color-mix(in srgb,var(--button) 92%,white); }
 .metrics { display:flex;align-items:center;margin:12px 0;padding:10px 13px;border-block:1px solid var(--line);gap:18px; }
 .metrics div { display:flex;flex-direction:column; }.metrics strong { font-size:18px;font-variant-numeric:tabular-nums;line-height:1.2; }
 .metrics span,#results-count { color:var(--subtle);font-size:11px; } #checked-time { margin-left:auto;text-align:right; }
@@ -136,8 +135,6 @@ main { padding-top:16px; }
 .sheet-paper i:nth-child(4) { background:#b81744;outline:1px solid #851035; }
 .sheet-paper i:nth-child(4)::before { background:#ffe6ee;right:16%; }
 .settings-group { margin-top:13px; }
-.primary-button { box-shadow:inset 0 1px 0 #ffffff26; }
-.primary-button:not(:disabled):hover { background:#a2133e; }
 #sample-open:hover { border-color:var(--accent); }
 #sample-dialog th { color:var(--muted);font-weight:550; }
 #sample-dialog tbody td:first-child { font:12px/1.5 ui-monospace,monospace; }
