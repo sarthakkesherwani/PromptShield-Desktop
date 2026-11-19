@@ -20,7 +20,7 @@ export const detectorInfo = { name: 'PromptShield Context', version: model.versi
 export function detectContext(text: string): ModelSpan[] {
   const tokens = [...text.matchAll(/[A-Za-z0-9_@+/#$%*-]+|[^\s]/g)];
   const words = tokens.map(t => t[0]);
-  const placeholders = [...text.matchAll(/\[[A-Z_]+_\d+\]|\$\{[A-Za-z_][A-Za-z0-9_]*\}/g)].map(m => [m.index!, m.index! + m[0].length]);
+  const placeholders = [...text.matchAll(/\[[A-Z_]+_\d+\]/g)].map(m => [m.index!, m.index! + m[0].length]);
   const result: ModelSpan[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const start = tokens[i].index!;

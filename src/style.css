@@ -193,12 +193,3 @@ main { padding-top:16px; }
 #sample-result { min-height:3em;margin-top:12px; }
 .sheet-actions { justify-content:flex-end;padding-top:10px;padding-bottom:10px;border-top:1px solid var(--line); }
 .sheet-actions button { flex:none;min-width:116px; }
-#code-panel {margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-#code-panel summary {cursor:pointer;font-weight:650}
-#code-panel label,#code-file {display:block;margin:12px 0 6px}
-#code-panel [hidden] {display:none}
-#code-panel textarea {display:block;width:100%;min-height:90px;margin:8px 0;padding:8px;box-sizing:border-box;background:var(--field);border:1px solid var(--line);border-radius:8px;font:12px/1.5 ui-monospace,monospace}
-#form-panel {margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-#form-panel summary {cursor:pointer;font-weight:650}
-#form-panel label,#form-scan {display:block;margin:10px 0}
-#form-fields {padding-left:18px} #form-fields li {margin:10px 0;overflow-wrap:anywhere}

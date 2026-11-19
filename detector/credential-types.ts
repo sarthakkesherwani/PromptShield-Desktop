@@ -32,6 +32,6 @@ export function classifyCredential(text:string,start:number,end:number,headerTyp
   return 'secret';
  }
  if(/^Bearer\s|^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/i.test(value))return 'access_token';
- if(/^(?:sk[-_]|pk_(?:live|test)_|AKIA[0-9A-Z]{16}|gh[pousr]_|github_pat_|npm_|AIza|xox[baprs]-)/.test(value))return 'api_key';
+ if(/^(?:sk[-_]|pk_(?:live|test)_|AKIA[0-9A-Z]{16}|gh[pousr]_|AIza|xox[baprs]-)/.test(value))return 'api_key';
  return 'credential';
 }

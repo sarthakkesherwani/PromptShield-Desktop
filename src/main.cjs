@@ -117,11 +117,6 @@ app.whenReady().then(()=>{
  const area=screen.getPrimaryDisplay().workArea,width=Math.min(430,area.width),height=Math.min(650,area.height);
  win=new BrowserWindow({paintWhenInitiallyHidden:false,width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{frame:true,transparent:false,titleBarStyle:'hiddenInset',trafficLightPosition:{x:15,y:19},fullscreenable:false}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',event=>event.preventDefault());
- ipcMain.handle('review-form',async(event,browser,scholarship)=>{
-  if(!mainSender(event))return null;
-  try{return await require('./form-review.cjs').inspectTab(browser,scholarship);}catch(e){return {error:e.message};}
- });
- ipcMain.handle('review-code',(event,text)=>mainSender(event)?require('./code-review.cjs').reviewCode(text):null);
  ipcMain.handle('review-sample',(event,masked)=>mainSender(event)?reviewSample(masked===true):null);
  const changeMonitor = (event, action) => {
   if (!mainSender(event)) return;
