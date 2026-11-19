@@ -1,5 +1,6 @@
 import { normalizeForDetection } from './normalize';
 import { contextualMatches } from './context-rules';
+import { detectCodeSecrets } from './code-secrets';
 import { detectContext } from './detector';
 import { classifyCredential, credentialCategoryForHeader, isRedactedCredential } from './credential-types';
 /**
@@ -424,7 +425,7 @@ export class DetectionEngine {
       }
     }
 
-    for (const span of detectContext(text)) {
+    for (const span of [...detectCodeSecrets(text), ...detectContext(text)]) {
       const rule = this.compiled.find(r => r.category === span.category);
       if (!rule) continue;
       // Deterministic verified matches take priority over contextual predictions.
