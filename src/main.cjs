@@ -113,9 +113,10 @@ async function automaticHint(snapshot){
  }catch{}finally{autoBusy=false;}
 }
 app.whenReady().then(()=>{
+ if(process.platform==='darwin'&&app.dock)app.dock.setIcon(path.join(__dirname,'brand.png'));
  session.defaultSession.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!details.url.startsWith('file:')&&!details.url.startsWith('devtools:')}));
  const area=screen.getPrimaryDisplay().workArea,width=Math.min(430,area.width),height=Math.min(650,area.height);
- win=new BrowserWindow({paintWhenInitiallyHidden:false,width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{frame:true,transparent:false,titleBarStyle:'hiddenInset',trafficLightPosition:{x:15,y:19},fullscreenable:false}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
+ win=new BrowserWindow({paintWhenInitiallyHidden:false,icon:path.join(__dirname,'brand.png'),width,height,x:area.x+area.width-width,y:area.y,frame:false,transparent:true,resizable:false,maximizable:false,hasShadow:true,show:false,alwaysOnTop:true,autoHideMenuBar:true,title:'PromptShield Desktop',backgroundColor:'#00000000',...(process.platform==='darwin'?{frame:true,transparent:false,titleBarStyle:'hiddenInset',trafficLightPosition:{x:15,y:19},fullscreenable:false}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false}});
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',event=>event.preventDefault());
  ipcMain.handle('review-sample',(event,masked)=>mainSender(event)?reviewSample(masked===true):null);
  const changeMonitor = (event, action) => {

@@ -27,7 +27,8 @@
     ],
     "win": {
       "target": "portable",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true,
+      "icon": "build/icon.ico"
     },
     "directories": {
       "output": "release"
@@ -47,7 +48,8 @@
           "from": "native/cell-anchor.node",
           "to": "cell-anchor.node"
         }
-      ]
+      ],
+      "icon": "build/icon.icns"
     },
     "extraResources": [
       {"from":"src/bulk-numbers-mac.js","to":"bulk-numbers-mac.js"},
