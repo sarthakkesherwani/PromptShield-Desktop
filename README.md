@@ -14,13 +14,25 @@ For developers: install Node.js 22+, then double-click `Start-PromptShield-Mac.c
 
 ## Run on your Windows laptop
 
-1. Install Node.js 22 or newer and Microsoft Excel desktop. Close any Excel instance running as administrator, then open Excel normally.
-2. Download this repository using **Code → Download ZIP**, then extract it.
-3. Double-click `Start-PromptShield.cmd`. First setup downloads npm dependencies and the Electron runtime. Internet is required for setup only.
-4. Open your workbook in desktop Excel and click **Start monitoring** in the floating window.
-5. Review cell references and masked previews. Copy a reviewed preview into the corresponding cell yourself. Pause or close the guard when finished.
+Install Node.js 22 or newer (including npm) and Microsoft Excel desktop. Download **Code → Download ZIP**, extract it, and open PowerShell or Command Prompt in the extracted project folder.
 
-For developers, `npm ci`, `npm run build`, `npm test`, then `npm start` perform the same setup. `npm run dist:win` builds a portable Windows executable. That build requires Windows or the build workflow. Release executables are unsigned until code signing is configured. Do not bypass a security warning to run an untrusted binary.
+In **PowerShell**, run:
+
+```powershell
+.\Start-PromptShield-Windows.cmd
+```
+
+In **Command Prompt**, run:
+
+```bat
+Start-PromptShield-Windows.cmd
+```
+
+You can also double-click `Start-PromptShield-Windows.cmd`. The original `Start-PromptShield.cmd` still opens the same launcher. Folder names with spaces are supported, and the launcher switches to its own project folder before running setup.
+
+The first run installs locked development dependencies into the project and prepares Electron if npm skipped its install script. It uses `npm.cmd` so PowerShell's npm.ps1 execution policy does not block launching. Setup needs an internet connection. Later runs reuse the installed dependencies and build/open the app locally. If setup or launch fails, the window retains the error and shows a dependency repair command.
+
+Open your workbook in desktop Excel and press **Start monitoring** in PromptShield. Source users with dependencies already installed can also run `npm.cmd start` from either terminal.
 
 ## Try the sample sheet
 

@@ -3,6 +3,11 @@ on:
   workflow_dispatch:
   push:
     tags: ['v*']
+    branches: ['main']
+    paths:
+      - 'Start-PromptShield*.cmd'
+      - 'tests/windows-launcher.test.cjs'
+      - '.github/workflows/windows.yml'
 permissions:
   contents: read
 jobs:
